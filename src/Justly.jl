@@ -2,7 +2,6 @@ module Justly
 
 using AudioSchedules:
     add!, AudioSchedule, Cycles, Hook, Line, Map, Plan, q_str, SawTooth, Scale, seek_peak
-import Base: float
 using PortAudio: PortAudioStream
 using QML: addrole, exec, get_julia_data, ListModel, load, qmlfunction, setconstructor
 using SampledSignals: samplerate
@@ -32,7 +31,7 @@ end
 
 Note() = Note(1, 1, 0, 1, 440.0)
 
-float(note::Note) = note.numerator / note.denominator * 2^note.octave
+interval(note::Note) = note.numerator / note.denominator * 2^note.octave
 
 mutable struct Chord
     notes::ListModel
@@ -99,10 +98,10 @@ function write_justly(; test = false)
                 for chord in chords
                     notes = get_notes(chord)
                     first_note = notes[1]
-                    key = key * float(first_note)
+                    key = key * interval(first_note)
                     first_note.frequency = key
                     for note in @view notes[2:end]
-                        note.frequency = key * float(note)
+                        note.frequency = key * interval(note)
                     end
                 end
                 nothing
@@ -204,8 +203,7 @@ end
     )
 
 Play music in Justly notation. `song` can be read in using `YAML` generated with
-[`write_justly`](@ref). Note also that top-level lists will be unnested, allowing for
-repetition using YAML anchors. `wave` should be a function which takes an angle in radians
+[`write_justly`](@ref). `wave` should be a function which takes an angle in radians
 and returns and amplitude between 0 and 1. `make_envelope` should be a function that takes
 a duration in units of time (like `s`) and returns a tuple of envelope segments that can
 be splatted into `AudioSchedules.add!`. `initial_key` should the frequency of the initial
@@ -214,7 +212,7 @@ amount of duration of a beat with units of time (like `s`).
 
 For example, to create a simple I-IV-I figure,
 
-```jldoctest
+```jldoctest justly
 julia> using Justly
 
 julia> using YAML
@@ -255,6 +253,22 @@ julia> play(justly(SAMPLE_RATE, YAML.load(\"""
                   interval: "5/4o1"
               lyrics: ""
          \""")));
+```
+
+Note also that top-level lists will be unnested, allowing for
+repetition using YAML anchors. 
+
+```jldoctest justly
+julia> justly(SAMPLE_RATE, YAML.load(\"""
+            - &fifth
+                - notes:
+                    - beats: 1
+                      interval: "1"
+                    - beats: 1
+                      interval: "3/2"
+                  lyrics: ""
+            - *fifth
+        \"""));
 ```
 """
 function justly(
