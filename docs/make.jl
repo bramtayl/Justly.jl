@@ -1,21 +1,5 @@
 using Justly
-using Documenter
+using Documenter: deploydocs, makedocs
 
-makedocs(;
-    modules=[Justly],
-    authors="Brandon Taylor <brandon.taylor221@gmail.com> and contributors",
-    repo="https://github.com/bramtayl/Justly.jl/blob/{commit}{path}#L{line}",
-    sitename="Justly.jl",
-    format=Documenter.HTML(;
-        prettyurls=get(ENV, "CI", "false") == "true",
-        canonical="https://bramtayl.github.io/Justly.jl",
-        assets=String[],
-    ),
-    pages=[
-        "Home" => "index.md",
-    ],
-)
-
-deploydocs(;
-    repo="github.com/bramtayl/Justly.jl",
-)
+makedocs(sitename = "Justly.jl", modules = [Justly], doctest = false)
+deploydocs(repo = "github.com/bramtayl/Justly.jl.git")

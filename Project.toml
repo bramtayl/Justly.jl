@@ -1,13 +1,27 @@
 name = "Justly"
 uuid = "3ed2f0d3-1e15-46aa-b21a-890b713d7b5d"
 authors = ["Brandon Taylor <brandon.taylor221@gmail.com> and contributors"]
-version = "0.1.0"
+version = "0.0.1"
+
+[deps]
+AudioSchedules = "0990df78-ca1d-4d03-ab92-318744ee3999"
+PortAudio = "80ea8bcb-4634-5cb3-8ee8-a132660d1d2d"
+QML = "2db162a6-7e43-52c3-8d84-290c1c42d82a"
+SampledSignals = "bd7594eb-a658-542f-9e75-4c4d8908c167"
+Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
+YAML = "ddb6d928-2868-570f-bddf-ab3f9cf99eb6"
 
 [compat]
 julia = "1"
+AudioSchedules = "0.1"
+PortAudio = "1.1"
+QML = "0.6"
+SampledSignals = "2.1"
+Unitful = "0.17,1.4"
+YAML = "0.4"
 
 [extras]
-Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
 
 [targets]
-test = ["Test"]
+test = ["Documenter"]

@@ -1,7 +1,3 @@
-```@meta
-CurrentModule = Justly
-```
-
 # Justly
 
 ```@index

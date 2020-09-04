@@ -1,6 +1,4 @@
-using Justly
-using Test
+using Justly: Justly
+using Documenter: doctest
 
-@testset "Justly.jl" begin
-    # Write your tests here.
-end
+doctest(Justly)
