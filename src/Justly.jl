@@ -2,23 +2,37 @@ module Justly
 
 using AudioSchedules:
     add!, AudioSchedule, Cycles, Hook, Line, Map, Plan, q_str, SawTooth, Scale, seek_peak
+using Base: Generator
 using PortAudio: PortAudioStream
-using QML: addrole, exec, get_julia_data, ListModel, load, qmlfunction, setconstructor
+using QML: addrole, exec, get_julia_data, ListModel, load, @qmlfunction, qmlfunction, setconstructor
 using SampledSignals: samplerate
 using Unitful: Hz, s
 using YAML: YAML
 
+"""
+    const Justly.WAVE = AudioSchedules.SawTooth(7)
+
+The default sound wave used for [`justly](@ref) and [`justly_interactive`](@ref).
+"""
 const WAVE = SawTooth(7)
 
-function wave(angle)
-    WAVE(angle) / 4
-end
+"""
+    pluck(duration; decay = -2.5 / s, slope = 1 / 0.005s, peak = 1)
 
-function pluck(time; decay = -2.5 / s, slope = 1 / 0.005s, peak = 1)
+The default envelope function used for [`justly`](@ref). An exponential decay
+with steep ramps on either side.
+"""
+function pluck(duration; decay = -2.5 / s, slope = 1 / 0.005s, peak = 1)
     ramp = peak / slope
-    (0, Line => ramp, peak, Hook(decay, -slope) => time - ramp, 0)
+    (0, Line => ramp, peak, Hook(decay, -slope) => duration - ramp, 0)
 end
+export pluck
 
+"""
+    const Justly.ENVELOPE = pluck(1s)
+
+The default envelope used for [`justly_interactive`](@ref).
+"""
 const ENVELOPE = pluck(1s)
 
 mutable struct Note
@@ -63,14 +77,68 @@ function Chord()
     Chord(model, "", false)
 end
 
-get_notes(chord) = get_julia_data(chord.notes).values
+get_notes(chord::Chord) = get_julia_data(chord.notes).values
+
+function as_dict(note::Note)
+    Dict(
+        "interval" => string(
+            note.numerator,
+            '/',
+            note.denominator,
+            'o',
+            note.octave,
+        ),
+        "beats" => note.beats,
+    )
+end
+
+function as_dict(chord::Chord)
+    Dict(
+        "notes" => Generator(as_dict, get_notes(chord)),
+        "lyrics" => chord.lyrics,
+    )
+end
+
+function make_yaml(chords)
+    YAML.write(Generator(as_dict, chords))
+end
+
+function update_frequencies!(chords, base_frequency)
+    key = parse(Float64, base_frequency)
+    for chord in chords
+        notes = get_notes(chord)
+        first_note = notes[1]
+        key = key * interval(first_note)
+        first_note.frequency = key
+        for note in @view notes[2:end]
+            note.frequency = key * interval(note)
+        end
+    end
+    nothing
+end
+
+function play_note(sink, wave, make_envelope, frequency)
+    plan = Plan(samplerate(sink)Hz)
+    add!(plan, Map(wave, Cycles((frequency)Hz)), 1s, make_envelope...)
+    schedule = AudioSchedule(plan)
+    write(sink, read(schedule, length(schedule)))
+end
 
 """
-    write_justly(; test = false)
+    function justly_interactive(;
+        wave = WAVE,
+        make_envelope = Justly.ENVELOPE
+        test = false
+    )
 
 Open an interactive interface where you can interactively write Justly text. Once you have
 finished writing, you can copy the results to the clipboard as YAML. Then, you can use
 [`play_justly`](@ref) to play them.
+
+`wave` should be a function which takes an angle in radians
+and returns and amplitude between 0 and 1. `make_envelope` should be a function that takes
+a duration in units of time (like `s`) and returns a tuple of envelope segments that can
+be splatted into `AudioSchedules.add!`. 
 
 The first interval in the chord will change the key, and tells how many beats before the
 next chord. You can set beats to 0 to overlap, or to a negative number to "time-travel" back
@@ -84,69 +152,25 @@ Set `test` to true if you would like to test the GUI but not use it.
 ```jldoctest
 julia> using Justly
 
-julia> write_justly(test = true)
+julia> justly_interactive(test = true)
 ```
 """
-function write_justly(; test = false)
+function justly_interactive(;
+    wave = WAVE,
+    make_envelope = ENVELOPE,
+    test = false
+)
     stream = PortAudioStream(samplerate = 44100)
     sink = stream.sink
     chords = Chord[]
-    chords_update_frequencies = 
-        let chords = chords
-            function (base_frequency)
-                key = parse(Float64, base_frequency)
-                for chord in chords
-                    notes = get_notes(chord)
-                    first_note = notes[1]
-                    key = key * interval(first_note)
-                    first_note.frequency = key
-                    for note in @view notes[2:end]
-                        note.frequency = key * interval(note)
-                    end
-                end
-                nothing
-            end
-        end
-    qmlfunction("chords_update_frequencies!", chords_update_frequencies)
-
-    sink_play_note = let sink = sink
+    qmlfunction("update_frequencies", update_frequencies!)
+    sink_play_note = let sink = sink, wave = wave, make_envelope = make_envelope
         function (frequency)
-            plan = Plan(samplerate(sink)Hz)
-            add!(plan, Map(wave, Cycles((frequency)Hz)), 1s, ENVELOPE...)
-            schedule = AudioSchedule(plan)
-            write(sink, read(schedule, length(schedule)))
+            frequency -> play_note(sink, wave, make_envelope, frequency)
         end
     end
     qmlfunction("sink_play_note", sink_play_note)
-
-    chords_make_yaml = let chords = chords
-        function ()
-            YAML.write(map(
-                function (chord)
-                    Dict(
-                        "notes" => map(
-                            function (note)
-                                Dict(
-                                    "interval" => string(
-                                        note.numerator,
-                                        '/',
-                                        note.denominator,
-                                        'o',
-                                        note.octave,
-                                    ),
-                                    "beats" => note.beats,
-                                )
-                            end,
-                            get_notes(chord),
-                        ),
-                        "lyrics" => chord.lyrics,
-                    )
-                end,
-                chords,
-            ))
-        end
-    end
-    qmlfunction("chords_make_yaml", chords_make_yaml)
+    @qmlfunction make_yaml
 
     load(joinpath(@__DIR__, "Justly.qml"); chords = ListModel(chords), test = test)
     exec()
@@ -155,22 +179,22 @@ function write_justly(; test = false)
         push!(get_notes(first_chord), Note())
         push!(chords, first_chord)
         push!(get_notes(chords[1]), Note())
-        chords_update_frequencies("440")
+        update_frequencies!(chords, "440")
         sink_play_note(440)
         close(stream)
-        chords_make_yaml()
+        make_yaml(chords)
     else
         close(stream)
     end
     nothing
 end
-export write_justly
+export justly_interactive
 
 function parse_note(note)
     q_str(note["interval"]), note["beats"]
 end
 
-function play!(plan, chord_lyrics, wave, make_envelope, key, clock, time_per_beat)
+function play!(plan::Plan, chord_lyrics, wave, make_envelope, key, clock, beat_duration)
     notes = chord_lyrics["notes"]
     modulation, ahead = parse_note(notes[1])
     key = key * modulation
@@ -180,34 +204,34 @@ function play!(plan, chord_lyrics, wave, make_envelope, key, clock, time_per_bea
             plan,
             Map(wave, Cycles(key * ratio)),
             clock,
-            make_envelope(beats * time_per_beat)...,
+            make_envelope(beats * beat_duration)...,
         )
     end
-    key, clock + ahead * time_per_beat
+    key, clock + ahead * beat_duration
 end
-function play!(plan, chords_lyrics::Vector, wave, make_envelope, key, clock, time_per_beat)
+function play!(plan::Plan, chords_lyrics::Vector, wave, make_envelope, key, clock, beat_duration)
     for chord_lyrics in chords_lyrics
         key, clock =
-            play!(plan, chord_lyrics, wave, make_envelope, key, clock, time_per_beat)
+            play!(plan, chord_lyrics, wave, make_envelope, key, clock, beat_duration)
     end
     key, clock
 end
 
 """
     function justly(sample_rate, song;
-        wave = SawTooth(7),
+        wave = Justly.WAVE,
         make_envelope = pluck,
-        key = 440Hz,
+        initial_key = 440Hz,
         clock = 0s,
-        time_per_beat = 1s
+        beat_duration = 1s
     )
 
 Play music in Justly notation. `song` can be read in using `YAML` generated with
-[`write_justly`](@ref). `wave` should be a function which takes an angle in radians
+[`justly_interactive`](@ref). `wave` should be a function which takes an angle in radians
 and returns and amplitude between 0 and 1. `make_envelope` should be a function that takes
 a duration in units of time (like `s`) and returns a tuple of envelope segments that can
 be splatted into `AudioSchedules.add!`. `initial_key` should the frequency of the initial
-key for your song, in units of frequency (like `Hz`). `time_per_beat` should specify the
+key for your song, in units of frequency (like `Hz`). `beat_duration` should specify the
 amount of duration of a beat with units of time (like `s`).
 
 For example, to create a simple I-IV-I figure,
@@ -268,23 +292,24 @@ julia> justly(SAMPLE_RATE, YAML.load(\"""
                       interval: "3/2"
                   lyrics: ""
             - *fifth
-        \"""));
+        \"""))
+AudioSchedule
 ```
 """
 function justly(
     sample_rate,
     song;
-    wave = SawTooth(7),
+    wave = WAVE,
     make_envelope = pluck,
     initial_key = 440Hz,
     clock = 0s,
-    time_per_beat = 1s,
+    beat_duration = 1s,
 )
     key = initial_key
     plan = Plan(sample_rate)
     for chord_lyrics in song
         key, clock =
-            play!(plan, chord_lyrics, wave, make_envelope, key, clock, time_per_beat)
+            play!(plan, chord_lyrics, wave, make_envelope, key, clock, beat_duration)
     end
     schedule = AudioSchedule(plan)
     map(Scale(1 / seek_peak(schedule)), schedule)
@@ -292,13 +317,13 @@ end
 export justly
 
 """
-    play(schedule)
+    play(it)
 
-Open a stream with PortAudio, play AudioSchedule, then close the stream.
+Open a stream with PortAudio, read and play `it`, then close the stream.
 """
-function play(schedule)
-    stream = PortAudioStream(samplerate = schedule.sample_rate / Hz)
-    write(stream.sink, read(schedule, length(schedule)))
+function play(it)
+    stream = PortAudioStream(samplerate = samplerate(it))
+    write(stream.sink, read(it, length(it)))
     close(stream)
 end
 export play

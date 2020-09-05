@@ -26,7 +26,7 @@ ApplicationWindow {
                 Button {
                     text: "Copy"
                     onClicked: {
-                        yaml.text = Julia.chords_make_yaml()
+                        yaml.text = Julia.make_yaml(chords)
                         yaml.select(0, yaml.length - 1)
                         yaml.copy()
                     }
@@ -46,7 +46,7 @@ ApplicationWindow {
                     text: "+"
                     onClicked: {
                         chords.insert(0, []);
-                        Julia.chords_update_frequencies(base_frequency.text);
+                        Julia.update_frequencies(chords, base_frequency.text);
                     }
                 }
             }
@@ -113,7 +113,7 @@ ApplicationWindow {
                                                             width: window.square_side
                                                             onEditingFinished: {
                                                                 numerator = text;
-                                                                Julia.chords_update_frequencies(base_frequency.text);
+                                                                Julia.update_frequencies(chords, base_frequency.text);
                                                             }
                                                         }
                                                         ToolSeparator {
@@ -126,7 +126,7 @@ ApplicationWindow {
                                                             width: window.square_side
                                                             onEditingFinished: {
                                                                 denominator = text;
-                                                                Julia.chords_update_frequencies(base_frequency.text);
+                                                                Julia.update_frequencies(chords, base_frequency.text);
                                                             }
                                                         }
                                                     }
@@ -140,7 +140,7 @@ ApplicationWindow {
                                                         width: window.square_side
                                                         onEditingFinished: {
                                                             octave = text;
-                                                            Julia.chords_update_frequencies(base_frequency.text);
+                                                            Julia.update_frequencies(chords, base_frequency.text);
                                                         }
                                                     }
                                                 }
@@ -183,7 +183,7 @@ ApplicationWindow {
                             text: "+"
                             onClicked: {
                                 chords.insert(index + 1, []);
-                                Julia.chords_update_frequencies(base_frequency.text);
+                                Julia.update_frequencies(chords, base_frequency.text);
                             }
                         }
                     }
