@@ -2,10 +2,11 @@ module Justly
 
 using AudioSchedules:
     add!, AudioSchedule, Cycles, Hook, Line, Map, Plan, q_str, SawTooth, Scale, seek_peak
-using Base: Generator
 using PortAudio: PortAudioStream
+using Observables: Observable
 using QML: addrole, exec, get_julia_data, ListModel, load, @qmlfunction, qmlfunction, setconstructor
 using SampledSignals: samplerate
+using Test: @test
 using Unitful: Hz, s
 using YAML: YAML
 
@@ -40,44 +41,22 @@ mutable struct Note
     denominator::Int
     octave::Int
     beats::Int
-    frequency::Float64
 end
 
-Note() = Note(1, 1, 0, 1, 440.0)
+Note() = Note(1, 1, 0, 1)
 
 interval(note::Note) = note.numerator / note.denominator * 2^note.octave
 
 mutable struct Chord
-    notes::ListModel
+    notes::Vector{Note}
     lyrics::String
-    selected::Bool
-end
-
-parse_int(something) = parse(Int, something)
-
-@inline function getter_setter(fieldname)
-    (@inline function (note)
-        string(getproperty(note, fieldname))
-    end),
-    @inline function (notes, new_value, index)
-        setproperty!(notes[index], fieldname, parse_int(new_value))
-    end
+    notes_model::ListModel
 end
 
 function Chord()
-    model = ListModel([Note()], false)
-    setconstructor(model, Note)
-    addrole(model, "numerator", getter_setter(:numerator)...)
-    addrole(model, "denominator", getter_setter(:denominator)...)
-    addrole(model, "octave", getter_setter(:octave)...)
-    addrole(model, "beats", getter_setter(:beats)...)
-    addrole(model, "frequency", function (note)
-        note.frequency
-    end)
-    Chord(model, "", false)
+    notes = [Note()]
+    Chord(notes, "", ListModel(notes))
 end
-
-get_notes(chord::Chord) = get_julia_data(chord.notes).values
 
 function as_dict(note::Note)
     Dict(
@@ -94,32 +73,25 @@ end
 
 function as_dict(chord::Chord)
     Dict(
-        "notes" => Generator(as_dict, get_notes(chord)),
+        "notes" => map(as_dict, chord.notes),
         "lyrics" => chord.lyrics,
     )
 end
 
 function make_yaml(chords)
-    YAML.write(Generator(as_dict, chords))
+    YAML.write(map(as_dict, chords))
 end
 
-function update_frequencies!(chords, base_frequency)
-    key = parse(Float64, base_frequency)
-    for chord in chords
-        notes = get_notes(chord)
-        first_note = notes[1]
-        key = key * interval(first_note)
-        first_note.frequency = key
-        for note in @view notes[2:end]
-            note.frequency = key * interval(note)
-        end
+function play_note(sink, wave, make_envelope, initial_key, chords, chord_index, voice_index)
+    key = initial_key
+    julia_chord_index = chord_index + 1
+    julia_voice_index = voice_index + 1
+    for chord in view(chords, 1:julia_chord_index)
+        key = key * interval(chord.notes[1])
     end
-    nothing
-end
-
-function play_note(sink, wave, make_envelope, frequency)
+    frequency = key * interval(chords[julia_chord_index].notes[julia_voice_index])
     plan = Plan(samplerate(sink)Hz)
-    add!(plan, Map(wave, Cycles((frequency)Hz)), 1s, make_envelope...)
+    add!(plan, Map(wave, Cycles(frequency)), 1s, make_envelope...)
     schedule = AudioSchedule(plan)
     write(sink, read(schedule, length(schedule)))
 end
@@ -127,7 +99,8 @@ end
 """
     function justly_interactive(;
         wave = WAVE,
-        make_envelope = Justly.ENVELOPE
+        make_envelope = Justly.ENVELOPE,
+        initial_key = 440Hz,
         test = false
     )
 
@@ -138,9 +111,9 @@ finished writing, you can copy the results to the clipboard as YAML. Then, you c
 `wave` should be a function which takes an angle in radians
 and returns and amplitude between 0 and 1. `make_envelope` should be a function that takes
 a duration in units of time (like `s`) and returns a tuple of envelope segments that can
-be splatted into `AudioSchedules.add!`. 
+be splatted into `AudioSchedules.add!`. `initial_key` should be in frequency units, like `Hz`.
 
-The first interval in the chord will change the key, and tells how many beats before the
+The first interval in the chord will modulate the key, and tells how many beats before the
 next chord. You can set beats to 0 to overlap, or to a negative number to "time-travel" back
 in time. The rest of the intervals in the chord will play notes with a given duration. Their
 interval will show their relationship to the key. You can use lyrics to as a way to
@@ -158,34 +131,35 @@ julia> justly_interactive(test = true)
 function justly_interactive(;
     wave = WAVE,
     make_envelope = ENVELOPE,
+    initial_key = 440Hz,
     test = false
 )
+
     stream = PortAudioStream(samplerate = 44100)
     sink = stream.sink
     chords = Chord[]
-    qmlfunction("update_frequencies", update_frequencies!)
-    sink_play_note = let sink = sink, wave = wave, make_envelope = make_envelope
-        function (frequency)
-            frequency -> play_note(sink, wave, make_envelope, frequency)
-        end
+    inner_play_note = let sink = sink, wave = wave, make_envelope = make_envelope, initial_key = initial_key, chords = chords
+        (chord_index, voice_index) -> play_note(sink, wave, make_envelope, initial_key, chords, chord_index, voice_index)
     end
-    qmlfunction("sink_play_note", sink_play_note)
-    @qmlfunction make_yaml
-
-    load(joinpath(@__DIR__, "Justly.qml"); chords = ListModel(chords), test = test)
+    qmlfunction("play_note", inner_play_note)
+    inner_make_yaml = let chords = chords
+        () -> make_yaml(chords)
+    end
+    qmlfunction("make_yaml", inner_make_yaml)
+    
+    load(joinpath(@__DIR__, "Justly.qml"); 
+        chords = ListModel(chords), 
+        test = test
+    )
+    
     exec()
     if test
-        first_chord = Chord()
-        push!(get_notes(first_chord), Note())
-        push!(chords, first_chord)
-        push!(get_notes(chords[1]), Note())
-        update_frequencies!(chords, "440")
-        sink_play_note(440)
-        close(stream)
-        make_yaml(chords)
-    else
-        close(stream)
+        push!(chords, Chord())
+        # note: this is 1, 1 in julia
+        inner_play_note(0, 0)
+        @test inner_make_yaml() == "- notes:\n    - beats: 1\n      interval: \"1/1o0\"\n  lyrics: \"\"\n"
     end
+    close(stream)
     nothing
 end
 export justly_interactive

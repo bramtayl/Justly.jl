@@ -1,13 +1,12 @@
-import QtQuick 2.14
-import QtQuick.Window 2.14
-import QtQuick.Controls 2.14
-import QtQml.Models 2.15
+import QtQuick 2.5
+import QtQuick.Window 2.5
+import QtQuick.Controls 2.5
+import QtQml.Models 2.5
 import org.julialang 1.0
 
 ApplicationWindow {
     visible: true
     id: window
-    property int square_side: 40
     property int spacing: 10
     color: "white"
     ScrollView {
@@ -21,23 +20,12 @@ ApplicationWindow {
             anchors.margins: window.spacing
             anchors.left: parent.left
             anchors.top: parent.top
-            Row {
-                spacing: window.spacing
-                Button {
-                    text: "Copy"
-                    onClicked: {
-                        yaml.text = Julia.make_yaml(chords)
-                        yaml.select(0, yaml.length - 1)
-                        yaml.copy()
-                    }
-                }
-                TextField {
-                    id: base_frequency
-                    text: qsTr("440")
-                }
-                Text {
-                    text: "hz"
-                    anchors.verticalCenter: parent.verticalCenter
+            Button {
+                text: "Copy"
+                onClicked: {
+                    yaml.text = Julia.make_yaml()
+                    yaml.select(0, yaml.length - 1)
+                    yaml.copy()
                 }
             }
             Row {
@@ -46,7 +34,6 @@ ApplicationWindow {
                     text: "+"
                     onClicked: {
                         chords.insert(0, []);
-                        Julia.update_frequencies(chords, base_frequency.text);
                     }
                 }
             }
@@ -58,6 +45,7 @@ ApplicationWindow {
                 clip: true
                 model: chords
                 delegate: Column {
+                    property int chord_index: index
                     spacing: window.spacing
                     Row {
                         spacing: window.spacing
@@ -84,93 +72,90 @@ ApplicationWindow {
                                 implicitWidth: contentItem.childrenRect.width
                                 implicitHeight: contentItem.childrenRect.height
                                 orientation: ListView.Horizontal
-                                model: notes
-                                delegate: Row {
+                                model: notes_model
+                                delegate: Grid {
+                                    horizontalItemAlignment: Grid.AlignHCenter
                                     spacing: window.spacing
-                                    Column {
-                                        spacing: window.spacing
-                                        Button {
-                                            anchors.horizontalCenter: parent.horizontalCenter
-                                            text: index > 0 ? "-" : ""
-                                            width: window.square_side
-                                            onClicked: {
-                                                if (index > 0) {
-                                                    notes.remove(index)
-                                                }
-                                            }
-                                        }
-                                        Row {
-                                            spacing: window.spacing
-                                            Column {
-                                                spacing: window.spacing
-                                                Row {
-                                                    spacing: window.spacing
-                                                    Column {
-                                                        spacing: window.spacing
-                                                        TextField {
-                                                            anchors.horizontalCenter: parent.horizontalCenter
-                                                            text: numerator
-                                                            width: window.square_side
-                                                            onEditingFinished: {
-                                                                numerator = text;
-                                                                Julia.update_frequencies(chords, base_frequency.text);
-                                                            }
-                                                        }
-                                                        ToolSeparator {
-                                                            orientation: Qt.Horizontal
-                                                            width: parent.width
-                                                        }
-                                                        TextField {
-                                                            anchors.horizontalCenter: parent.horizontalCenter
-                                                            text: denominator
-                                                            width: window.square_side
-                                                            onEditingFinished: {
-                                                                denominator = text;
-                                                                Julia.update_frequencies(chords, base_frequency.text);
-                                                            }
-                                                        }
-                                                    }
-                                                    Text {
-                                                        anchors.verticalCenter: parent.verticalCenter
-                                                        text: "2"
-                                                    }
-                                                    TextField {
-                                                        anchors.horizontalCenter: parent.Top
-                                                        text: octave
-                                                        width: window.square_side
-                                                        onEditingFinished: {
-                                                            octave = text;
-                                                            Julia.update_frequencies(chords, base_frequency.text);
-                                                        }
-                                                    }
-                                                }
-                                                Row {
-                                                    spacing: window.spacing
-                                                    Button {
-                                                        text: "▶"
-                                                        width: window.square_side
-                                                        onClicked: {
-                                                            Julia.sink_play_note(frequency)
-                                                        }
-                                                    }
-                                                    TextField {
-                                                        text: beats
-                                                        width: window.square_side
-                                                        onEditingFinished: {
-                                                            beats = text
-                                                        }
-                                                    }
-                                                }
+                                    columns: 2
+                                    Button {
+                                        opacity: index > 0
+                                        text: "-"
+                                        onClicked: {
+                                            if (index > 0) {
+                                                notes_model.remove(index)
                                             }
                                         }
                                     }
                                     Button {
-                                        anchors.top: parent.top
-                                        anchors.horizontalCenter: parent.horizonalCenter
                                         text: "+"
-                                        width: window.square_side
                                         onClicked: {
-                                            notes.insert(index + 1, [])
+                                            notes_model.insert(index + 1, [])
+                                        }
+                                    }
+                                    Row {
+                                        spacing: window.spacing
+                                        Column {
+                                            spacing: window.spacing
+                                            Row {
+                                                spacing: window.spacing
+                                                Column {
+                                                    spacing: window.spacing
+                                                    SpinBox {
+                                                        value: numerator
+                                                        from: 1
+                                                        editable: true
+                                                        onValueModified: {
+                                                            numerator = value
+                                                        }
+                                                    }
+                                                    ToolSeparator {
+                                                        orientation: Qt.Horizontal
+                                                        width: parent.width
+                                                    }
+                                                    SpinBox {
+                                                        value: denominator
+                                                        from: 1
+                                                        editable: true
+                                                        onValueModified: {
+                                                            denominator = value
+                                                        }
+                                                    }
+                                                }
+                                                Text {
+                                                    anchors.verticalCenter: parent.verticalCenter
+                                                    text: "2"
+                                                }
+                                                SpinBox {
+                                                    value: octave
+                                                    from: -99
+                                                    editable: true
+                                                    onValueModified: {
+                                                        octave = value
+                                                    }
+                                                }
+                                            }
+                                            Row {
+                                                spacing: window.spacing
+                                                Button {
+                                                    visible: index > 0
+                                                    text: "▶"
+                                                    onClicked: {
+                                                        Julia.play_note(chord_index, index)
+                                                    }
+                                                }
+                                                Text {
+                                                    anchors.verticalCenter: parent.verticalCenter
+                                                    text: "for"
+                                                }
+                                                SpinBox {
+                                                    value: beats
+                                                    from: -99
+                                                    editable: true
+                                                    onValueModified: {
+                                                        beats = value
+                                                    }
+                                                }
+                                            }
                                         }
                                     }
                                 }
@@ -183,7 +168,6 @@ ApplicationWindow {
                             text: "+"
                             onClicked: {
                                 chords.insert(index + 1, []);
-                                Julia.update_frequencies(chords, base_frequency.text);
                             }
                         }
                     }
