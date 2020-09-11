@@ -3,17 +3,17 @@
 [![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://bramtayl.github.io/Justly.jl/dev)
 [![Coverage](https://codecov.io/gh/bramtayl/Justly.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/bramtayl/Justly.jl)
 
-Have you ever felt constrained by only being able to compose with the 12 notes in the Western scale? Well, congratulations! You can use Justly to compose music using just intervals. Almost all western instruments are constrained to the notes of the Western scale, with some exceptions (like the human voice, string instruments, and the trombone). Even then, most string players and trombonists stick to memorized positions aligning with the western scale. But newsflash: you can never play in tune with the western scale. Some intervals are pretty close to their harmonic equivalents (fifths), but others, like the harmonic seventh, aren't even close. If you're interested in hearing what just intervals sound like, check out [this video](https://www.youtube.com/watch?v=vC9Qh709gas).
+Have you ever felt constrained by only being able to compose with the 12 notes in the Western scale? You can use Justly to compose music using just intervals. Almost all western instruments are constrained to the notes of the Western scale, with some exceptions (like the human voice, string instruments, and the trombone). Even then, most string players and trombonists stick to memorized positions aligning with the western scale. You can never play perfectly in tune using the western scale. Some intervals are pretty close to their harmonic equivalents (fifths), but others, like the harmonic seventh, aren't even close. If you're interested in hearing what just intervals sound like, check out [this video](https://www.youtube.com/watch?v=vC9Qh709gas).
 
-The reason there aren't more musicians using just intonation is that there isn't a good way to write music in just notation (until now!). There are some hacky ways to modify Western music notation to do it. If you're bored, you can read about Johnston notation [here](http://marsbat.space/pdfs/EJItext.pdf). However, these methods are fundamentally limited by relying on a limited method of music notation. What the world needs (besides ethical socialism) is a way of writing music that leaves Western music notation behind. Introducing (drumroll...) Justly. Justly is not just my first attempt at writing a GUI, but also, a totally new way of writing down music.
+The reason there aren't more musicians using just intonation is that there isn't a good way to write music in just notation (until now!). There are some hacky ways to modify Western music notation to do it. If you're bored, you can read about Johnston notation [here](http://marsbat.space/pdfs/EJItext.pdf). However, these methods are fundamentally limited by relying on a limited method of music notation. Justly is not just my first attempt at writing a GUI, but also, a totally new way of writing down music.
 
-To run Justly, you will just need to run the Julia script in the repository. To begin, run justly_interactive to bring up an interactive dialog for entering music using Justly notation.
+To run Justly, you will just need to run the Julia script in the repository. To begin, run `justly_interactive` to bring up an interactive dialog for entering music using Justly notation.
 
 ## Instructions for using Justly:
 
 Musical intervals are identified in Justly by a rational fraction (integer / integer) times a power of 2. This means that there are multiple ways of writing the same ratio. For example, you could write a fifth as `3/2*2^0`, or `3/1*2^-1`.
 
-Unless you are going to be really adventurous, you will only need to know 4 fundamental intervals:
+You will likely only need to know 4 fundamental intervals:
 
 - Octave: `2/1`
 - Major fifth: `3/2`
@@ -41,4 +41,4 @@ After 1 beat, the key changes: it goes down by a fifth, so divide by `3/2`, that
 
 After 1 more beat, the key changes, and we return to our original chord by moving the key up a fifth (`3/2`). Now, all the voices play for `2` beats.
 
-You can preview the pitch of any note or key in the song by clicking the play button underneath it. Once you are done, you can copy the song to your clipboard in YAML. From there, you can play it with the justly function.
+You can preview the pitch of any note or key in the song by clicking the play button underneath it. Once you are done, you can play the whole song or copy the song to your clipboard in YAML. You can play YAML using the `justly` function.
