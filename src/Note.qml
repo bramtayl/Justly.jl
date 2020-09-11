@@ -29,7 +29,7 @@ Grid {
         id: note
         Row {
             TextTemplate {
-                text: index == 0 ? "key = key * " : "key * "
+                text: index == 0 ? "key = key × " : "key × "
             }
             Column {
                 SpinBox {
@@ -52,7 +52,7 @@ Grid {
                 }
             }
             TextTemplate {
-                text: "* 2"
+                text: "× 2"
             }
             SpinBox {
                 value: octave
