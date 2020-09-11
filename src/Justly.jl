@@ -4,18 +4,19 @@ using AudioSchedules:
     add!, AudioSchedule, Cycles, Hook, Line, Map, Plan, q_str, SawTooth, Scale, seek_peak
 using PortAudio: PortAudioStream
 using Observables: Observable
-using QML: addrole, exec, get_julia_data, ListModel, load, @qmlfunction, qmlfunction, setconstructor
+using QML:
+    addrole,
+    exec,
+    get_julia_data,
+    ListModel,
+    load,
+    @qmlfunction,
+    qmlfunction,
+    setconstructor
 using SampledSignals: samplerate
 using Test: @test
 using Unitful: Hz, s
 using YAML: YAML
-
-"""
-    const Justly.WAVE = AudioSchedules.SawTooth(7)
-
-The default sound wave used for [`justly](@ref) and [`justly_interactive`](@ref).
-"""
-const WAVE = SawTooth(7)
 
 """
     pluck(duration; decay = -2.5 / s, slope = 1 / 0.005s, peak = 1)
@@ -45,7 +46,13 @@ end
 
 Note() = Note(1, 1, 0, 1)
 
-interval(note::Note) = note.numerator / note.denominator * 2^note.octave
+function interval_beats(note::Note)
+    (note.numerator / note.denominator * 2.0^note.octave, note.beats)
+end
+
+function interval_beats(note::Dict)
+    q_str(note["interval"]), note["beats"]
+end
 
 mutable struct Chord
     notes::Vector{Note}
@@ -58,49 +65,71 @@ function Chord()
     Chord(notes, "", ListModel(notes))
 end
 
+get_notes(chord::Chord) = chord.notes
+get_notes(chord::Dict) = chord["notes"]
+
 function as_dict(note::Note)
     Dict(
-        "interval" => string(
-            note.numerator,
-            '/',
-            note.denominator,
-            'o',
-            note.octave,
-        ),
+        "interval" => string(note.numerator, '/', note.denominator, 'o', note.octave),
         "beats" => note.beats,
     )
 end
 
 function as_dict(chord::Chord)
-    Dict(
-        "notes" => map(as_dict, chord.notes),
-        "lyrics" => chord.lyrics,
-    )
+    Dict("notes" => map(as_dict, chord.notes), "lyrics" => chord.lyrics)
 end
 
 function make_yaml(chords)
     YAML.write(map(as_dict, chords))
 end
 
-function play_note(sink, wave, make_envelope, initial_key, chords, chord_index, voice_index)
+function play(
+    sink,
+    wave,
+    make_envelope,
+    initial_key,
+    beat_duration,
+    chords,
+    chord_index,
+    voice_index,
+)
     key = initial_key
     julia_chord_index = chord_index + 1
     julia_voice_index = voice_index + 1
     for chord in view(chords, 1:julia_chord_index)
-        key = key * interval(chord.notes[1])
+        modulation, ahead = interval_beats(chord.notes[1])
+        key = key * modulation
     end
-    frequency = key * interval(chords[julia_chord_index].notes[julia_voice_index])
+    interval, beats = interval_beats(chords[julia_chord_index].notes[julia_voice_index])
     plan = Plan(samplerate(sink)Hz)
-    add!(plan, Map(wave, Cycles(frequency)), 1s, make_envelope...)
+    add!(
+        plan,
+        Map(wave, Cycles(key * interval)),
+        0s,
+        make_envelope(beat_duration * beats)...,
+    )
     schedule = AudioSchedule(plan)
+    write(sink, read(schedule, length(schedule)))
+end
+
+function play(sink, wave, make_envelope, initial_key, beat_duration, chords)
+    schedule = justly(
+        samplerate(sink)Hz,
+        chords;
+        wave = wave,
+        make_envelope = make_envelope,
+        initial_key = initial_key,
+        beat_duration = beat_duration,
+    )
     write(sink, read(schedule, length(schedule)))
 end
 
 """
     function justly_interactive(;
-        wave = WAVE,
-        make_envelope = Justly.ENVELOPE,
+        wave = SawTooth(7),
+        make_envelope = pluck,
         initial_key = 440Hz,
+        beat_duration = 1s,
         test = false
     )
 
@@ -129,71 +158,95 @@ julia> justly_interactive(test = true)
 ```
 """
 function justly_interactive(;
-    wave = WAVE,
-    make_envelope = ENVELOPE,
+    wave = SawTooth(7),
+    make_envelope = pluck,
     initial_key = 440Hz,
-    test = false
+    beat_duration = 1s,
+    test = false,
 )
 
     stream = PortAudioStream(samplerate = 44100)
     sink = stream.sink
     chords = Chord[]
-    inner_play_note = let sink = sink, wave = wave, make_envelope = make_envelope, initial_key = initial_key, chords = chords
-        (chord_index, voice_index) -> play_note(sink, wave, make_envelope, initial_key, chords, chord_index, voice_index)
-    end
+    inner_play_note =
+        let sink = sink,
+            wave = wave,
+            make_envelope = make_envelope,
+            initial_key = initial_key,
+            beat_duration = beat_duration,
+            chords = chords
+
+            (chord_index, voice_index) -> play(
+                sink,
+                wave,
+                make_envelope,
+                initial_key,
+                beat_duration,
+                chords,
+                chord_index,
+                voice_index,
+            )
+        end
     qmlfunction("play_note", inner_play_note)
     inner_make_yaml = let chords = chords
         () -> make_yaml(chords)
     end
     qmlfunction("make_yaml", inner_make_yaml)
-    
-    load(joinpath(@__DIR__, "Justly.qml"); 
-        chords = ListModel(chords), 
-        test = test
-    )
-    
+    inner_play_song =
+        let sink = sink,
+            wave = wave,
+            make_envelope = make_envelope,
+            initial_key = initial_key,
+            beat_duration = beat_duration,
+            chords = chords
+
+            () -> play(sink, wave, make_envelope, initial_key, beat_duration, chords)
+        end
+    qmlfunction("play_song", inner_play_song)
+
+    load(joinpath(@__DIR__, "Justly.qml"); chords = ListModel(chords), test = test)
+
     exec()
     if test
-        push!(chords, Chord())
+        first_chord = Chord()
+        push!(first_chord.notes, Note())
+        push!(chords, first_chord)
         # note: this is 1, 1 in julia
-        inner_play_note(0, 0)
-        @test inner_make_yaml() == "- notes:\n    - beats: 1\n      interval: \"1/1o0\"\n  lyrics: \"\"\n"
+        inner_play_note(0, 1)
+        inner_play_song()
+        @test inner_make_yaml() ==
+              "- notes:\n    - beats: 1\n      interval: \"1/1o0\"\n    - beats: 1\n      interval: \"1/1o0\"\n  lyrics: \"\"\n"
     end
     close(stream)
     nothing
 end
 export justly_interactive
 
-function parse_note(note)
-    q_str(note["interval"]), note["beats"]
-end
-
-function play!(plan::Plan, chord_lyrics, wave, make_envelope, key, clock, beat_duration)
-    notes = chord_lyrics["notes"]
-    modulation, ahead = parse_note(notes[1])
+function play!(plan::Plan, chord, wave, make_envelope, key, clock, beat_duration)
+    notes = get_notes(chord)
+    modulation, ahead = interval_beats(notes[1])
     key = key * modulation
     for note in notes[2:end]
-        ratio, beats = parse_note(note)
+        interval, beats = interval_beats(note)
         add!(
             plan,
-            Map(wave, Cycles(key * ratio)),
+            Map(wave, Cycles(key * interval)),
             clock,
             make_envelope(beats * beat_duration)...,
         )
     end
     key, clock + ahead * beat_duration
 end
-function play!(plan::Plan, chords_lyrics::Vector, wave, make_envelope, key, clock, beat_duration)
-    for chord_lyrics in chords_lyrics
-        key, clock =
-            play!(plan, chord_lyrics, wave, make_envelope, key, clock, beat_duration)
+function play!(plan::Plan, chords::Vector, wave, make_envelope, key, clock, beat_duration)
+    for chord in chords
+        key, clock = play!(plan, chord, wave, make_envelope, key, clock, beat_duration)
     end
     key, clock
 end
 
 """
     function justly(sample_rate, song;
-        wave = Justly.WAVE,
+        wave = SawTooth(7),
         make_envelope = pluck,
         initial_key = 440Hz,
         clock = 0s,
@@ -219,7 +272,7 @@ julia> using Unitful: Hz
 
 julia> const SAMPLE_RATE = 44100Hz;
 
-julia> play(justly(SAMPLE_RATE, YAML.load(\"""
+julia> justly(SAMPLE_RATE, YAML.load(\"""
             - notes:
                 - beats: 1
                   interval: "1"
@@ -250,7 +303,8 @@ julia> play(justly(SAMPLE_RATE, YAML.load(\"""
                 - beats: 1
                   interval: "5/4o1"
               lyrics: ""
-         \""")));
+         \"""))
+AudioSchedule
 ```
 
 Note also that top-level lists will be unnested, allowing for
@@ -273,7 +327,7 @@ AudioSchedule
 function justly(
     sample_rate,
     song;
-    wave = WAVE,
+    wave = SawTooth(7),
     make_envelope = pluck,
     initial_key = 440Hz,
     clock = 0s,
@@ -281,25 +335,12 @@ function justly(
 )
     key = initial_key
     plan = Plan(sample_rate)
-    for chord_lyrics in song
-        key, clock =
-            play!(plan, chord_lyrics, wave, make_envelope, key, clock, beat_duration)
+    for chord in song
+        key, clock = play!(plan, chord, wave, make_envelope, key, clock, beat_duration)
     end
     schedule = AudioSchedule(plan)
     map(Scale(1 / seek_peak(schedule)), schedule)
 end
 export justly
-
-"""
-    play(it)
-
-Open a stream with PortAudio, read and play `it`, then close the stream.
-"""
-function play(it)
-    stream = PortAudioStream(samplerate = samplerate(it))
-    write(stream.sink, read(it, length(it)))
-    close(stream)
-end
-export play
 
 end
