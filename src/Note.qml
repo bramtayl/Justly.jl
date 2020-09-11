@@ -3,11 +3,12 @@ import QtQuick.Controls 2.5
 import org.julialang 1.0
 
 Grid {
+    spacing: window.spacing
+    horizontalItemAlignment: Grid.AlignHCenter
     columns: 2
     TextField {
         text: lyrics
         visible: index == 0
-        width: note.width
         onEditingFinished: {
             lyrics = text
         }
@@ -26,12 +27,11 @@ Grid {
         }
     }
     Column {
-        id: note
+        spacing: window.spacing
         Row {
-            TextTemplate {
-                text: index == 0 ? "key = key × " : "key × "
-            }
+            spacing: window.spacing
             Column {
+                spacing: window.spacing
                 SpinBox {
                     value: numerator
                     from: 1
@@ -63,15 +63,13 @@ Grid {
             }
         }
         Row {
+            anchors.horizontalCenter: parent.horizontalCenter
+            spacing: window.spacing
             PlayButton {
                 visible: index > 0
                 onClicked: {
                     Julia.play_note(chord_index, index)
                 }
-            }
-            TextTemplate {
-                visible: index == 0
-                text: "Wait"
             }
             TextTemplate {
                 text: " for "

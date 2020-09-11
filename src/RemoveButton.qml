@@ -1,6 +1,6 @@
 import QtQuick.Controls 2.5
 
-Button {
+RoundButton {
     contentItem: HeaderTemplate {
         text: "−"
         color: "red"
