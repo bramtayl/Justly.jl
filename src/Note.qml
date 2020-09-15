@@ -28,42 +28,50 @@ Grid {
     }
     Column {
         spacing: window.spacing
-        Row {
-            spacing: window.spacing
-            Column {
+        Rectangle {
+            width: note.width + 2 * window.spacing
+            height: note.height + 2 * window.spacing
+            color: "lightgoldenrodyellow"
+            Row {
+                id: note
                 spacing: window.spacing
-                SpinBox {
-                    value: numerator
-                    from: 1
-                    onValueModified: {
-                        numerator = value
+                anchors.top: parent.top
+                anchors.left: parent.left
+                anchors.margins: window.spacing
+                Column {
+                    spacing: window.spacing
+                    SpinBox {
+                        value: numerator
+                        from: 1
+                        onValueModified: {
+                            numerator = value
+                        }
+                    }
+                    ToolSeparator {
+                        orientation: Qt.Horizontal
+                        width: parent.width
+                    }
+                    SpinBox {
+                        value: denominator
+                        from: 1
+                        onValueModified: {
+                            denominator = value
+                        }
                     }
                 }
-                ToolSeparator {
-                    orientation: Qt.Horizontal
-                    width: parent.width
+                TextTemplate {
+                    text: "× 2"
                 }
                 SpinBox {
-                    value: denominator
-                    from: 1
+                    value: octave
+                    from: -99
                     onValueModified: {
-                        denominator = value
+                        octave = value
                     }
-                }
-            }
-            TextTemplate {
-                text: "× 2"
-            }
-            SpinBox {
-                value: octave
-                from: -99
-                onValueModified: {
-                    octave = value
                 }
             }
         }
         Row {
-            anchors.horizontalCenter: parent.horizontalCenter
             spacing: window.spacing
             PlayButton {
                 visible: index > 0

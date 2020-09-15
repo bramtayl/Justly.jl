@@ -31,6 +31,17 @@ end
 export pluck
 
 """
+    pedal(duration; slope = 1 / 0.005s, peak = 1)
+
+An sustain with steep ramps on either side.
+"""
+function pedal(duration; decay = -2.5 / s, slope = 1 / 0.005s, peak = 1)
+    ramp = peak / slope
+    (0, Line => ramp, peak, Line => (duration - ramp - ramp), peak, Line => ramp, 0)
+end
+export pedal
+
+"""
     const Justly.ENVELOPE = pluck(1s)
 
 The default envelope used for [`justly_interactive`](@ref).
@@ -88,7 +99,7 @@ function play(
     wave,
     make_envelope,
     initial_key,
-    beat_duration,
+    preview_duration,
     chords,
     chord_index,
     voice_index,
@@ -106,10 +117,10 @@ function play(
         plan,
         Map(wave, Cycles(key * interval)),
         0s,
-        make_envelope(beat_duration * beats)...,
+        make_envelope(preview_duration)...,
     )
     schedule = AudioSchedule(plan)
-    write(sink, read(schedule, length(schedule)))
+    write(sink, schedule)
 end
 
 function play(sink, wave, make_envelope, initial_key, beat_duration, chords)
@@ -121,7 +132,7 @@ function play(sink, wave, make_envelope, initial_key, beat_duration, chords)
         initial_key = initial_key,
         beat_duration = beat_duration,
     )
-    write(sink, read(schedule, length(schedule)))
+    write(sink, schedule)
 end
 
 """
@@ -130,6 +141,7 @@ end
         make_envelope = pluck,
         initial_key = 440Hz,
         beat_duration = 1s,
+        preview_duration = 0.5
         test = false
     )
 
@@ -137,10 +149,11 @@ Open an interactive interface where you can interactively write Justly text. Onc
 finished writing, you can copy the results to the clipboard as YAML. Then, you can use
 [`play_justly`](@ref) to play them.
 
-`wave` should be a function which takes an angle in radians
-and returns and amplitude between 0 and 1. `make_envelope` should be a function that takes
-a duration in units of time (like `s`) and returns a tuple of envelope segments that can
-be splatted into `AudioSchedules.add!`. `initial_key` should be in frequency units, like `Hz`.
+`wave` should be a function which takes an angle in radians and returns and amplitude between 0 and 1. 
+`make_envelope` should be a function that takes a duration in units of time (like `s`) and returns a tuple of envelope segments that can be splatted into `AudioSchedules.add!`. 
+`initial_key` should be in frequency units, like `Hz`.
+`beat_duration` should be in time units, like `s`.
+`preview_duration` should be in time units, like `s`.
 
 The first interval in the chord will modulate the key, and tells how many beats before the
 next chord. You can set beats to 0 to overlap, or to a negative number to "time-travel" back
@@ -162,6 +175,7 @@ function justly_interactive(;
     make_envelope = pluck,
     initial_key = 440Hz,
     beat_duration = 1s,
+    preview_duration = 0.5s,
     test = false,
 )
 
@@ -173,7 +187,6 @@ function justly_interactive(;
             wave = wave,
             make_envelope = make_envelope,
             initial_key = initial_key,
-            beat_duration = beat_duration,
             chords = chords
 
             (chord_index, voice_index) -> play(
@@ -181,7 +194,7 @@ function justly_interactive(;
                 wave,
                 make_envelope,
                 initial_key,
-                beat_duration,
+                preview_duration,
                 chords,
                 chord_index,
                 voice_index,
@@ -211,7 +224,7 @@ function justly_interactive(;
         first_chord = Chord()
         push!(first_chord.notes, Note())
         push!(chords, first_chord)
-        # note: this is 1, 1 in julia
+        # note: this is 1, 2 in julia
         inner_play_note(0, 1)
         inner_play_song()
         @test inner_make_yaml() ==
@@ -342,5 +355,7 @@ function justly(
     map(Scale(1 / seek_peak(schedule)), schedule)
 end
 export justly
+
+# TODO: figure out why song playing is so much softer than note playing
 
 end

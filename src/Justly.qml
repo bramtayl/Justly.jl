@@ -6,12 +6,11 @@ import org.julialang 1.0
 ApplicationWindow {
     visible: true
     id: window
-    property int spacing: 5
+    property int spacing: 10
     color: "white"
     ScrollView {
         anchors.fill: parent
-        anchors.leftMargin: 5
-        anchors.topMargin: 5
+        anchors.margins: window.spacing
         Column {
             spacing: window.spacing
             Row {
