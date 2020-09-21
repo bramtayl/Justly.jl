@@ -1,7 +1,7 @@
-import QtQuick 2.5
+import QtQuick 2.15
 
 ListView {
-    spacing: window.spacing
+    spacing: parent.spacing
     width: contentItem.childrenRect.width
     height: contentItem.childrenRect.height
 }

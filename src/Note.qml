@@ -1,5 +1,5 @@
-import QtQuick 2.5
-import QtQuick.Controls 2.5
+import QtQuick 2.15
+import QtQuick.Controls 2.15
 import org.julialang 1.0
 
 Grid {
@@ -27,10 +27,10 @@ Grid {
         }
     }
     Column {
-        spacing: window.spacing
+        spacing: parent.spacing
         Rectangle {
-            width: note.width + 2 * window.spacing
-            height: note.height + 2 * window.spacing
+            width: note.width + 2 * parent.spacing
+            height: note.height + 2 * parent.spacing
             color: "lightgoldenrodyellow"
             Row {
                 id: note
@@ -39,7 +39,7 @@ Grid {
                 anchors.left: parent.left
                 anchors.margins: window.spacing
                 Column {
-                    spacing: window.spacing
+                    spacing: parent.spacing
                     SpinBox {
                         value: numerator
                         from: 1
@@ -72,11 +72,14 @@ Grid {
             }
         }
         Row {
-            spacing: window.spacing
+            spacing: parent.spacing
             PlayButton {
                 visible: index > 0
-                onClicked: {
-                    Julia.play_note(chord_index, index)
+                onPressed: {
+                    Julia.press(chord_index, index)
+                }
+                onReleased: {
+                    Julia.release()
                 }
             }
             TextTemplate {

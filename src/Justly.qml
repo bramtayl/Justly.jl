@@ -1,6 +1,6 @@
-import QtQuick 2.5
-import QtQuick.Window 2.5
-import QtQuick.Controls 2.5
+import QtQuick 2.15
+import QtQuick.Window 2.15
+import QtQuick.Controls 2.15
 import org.julialang 1.0
 
 ApplicationWindow {
@@ -10,14 +10,19 @@ ApplicationWindow {
     color: "white"
     ScrollView {
         anchors.fill: parent
-        anchors.margins: window.spacing
+        contentHeight: main.height + 3 * window.spacing
+        contentWidth: main.width + 3 * window.spacing
         Column {
+            id: main
+            anchors.margins: window.spacing
+            anchors.left: parent.left
+            anchors.top: parent.top
             spacing: window.spacing
             Row {
-                spacing: window.spacing
+                spacing: parent.spacing
                 PlayButton {
                     onClicked: {
-                        Julia.play_song()
+                        Julia.play()
                     }
                 }
                 Button {
@@ -40,7 +45,6 @@ ApplicationWindow {
                 id: chords_view
                 model: chords
                 delegate: Chord { }
-                spacing: window.spacing
             }
         }
     }
