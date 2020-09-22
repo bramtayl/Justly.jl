@@ -32,13 +32,13 @@ end
 export pluck
 
 """
-    pedal(duration; slope = 1 / 0.005s, peak = 1)
+    pedal(duration; slope = 1 / 0.1s, peak = 1, overlap = 1/2)
 
-An sustain with steep ramps on either side.
+A sustain with steep ramps on either side. Increase overlap to make the sound more legato.
 """
-function pedal(duration; slope = 1 / 0.005s, peak = 1)
+function pedal(duration; slope = 1 / 0.1s, peak = 1, overlap = 1/2)
     ramp = peak / slope
-    (0, Line => ramp, peak, Line => (duration - ramp - ramp), peak, Line => ramp, 0)
+    (0, Line => ramp, peak, Line => (duration - ramp - ramp + ramp * overlap), peak, Line => ramp, 0)
 end
 export pedal
 
