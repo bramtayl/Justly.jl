@@ -32,22 +32,15 @@ end
 export pluck
 
 """
-    pedal(duration; slope = 1 / 0.1s, peak = 1, overlap = 1/2)
+    pedal(duration; slope = 1 / 0.01s, peak = 1, overlap = 1/2)
 
 A sustain with steep ramps on either side. Increase overlap to make the sound more legato.
 """
-function pedal(duration; slope = 1 / 0.1s, peak = 1, overlap = 1/2)
+function pedal(duration; slope = 1 / 0.01s, peak = 1, overlap = 1/2)
     ramp = peak / slope
     (0, Line => ramp, peak, Line => (duration - ramp - ramp + ramp * overlap), peak, Line => ramp, 0)
 end
 export pedal
-
-"""
-    const Justly.ENVELOPE = pluck(1s)
-
-The default envelope used for [`justly_interactive`](@ref).
-"""
-const ENVELOPE = pluck(1s)
 
 mutable struct Note
     numerator::Int
@@ -96,7 +89,7 @@ end
         sample_rate = 44100Hz,
         wave = SawTooth(7),
         max_voices = 6,
-        make_envelope = pluck,
+        make_envelope = pedal,
         initial_key = 440Hz,
         beat_duration = 1s,
         ramp = 0.1s,
@@ -130,7 +123,7 @@ function justly_interactive(;
     sample_rate = 44100Hz,
     wave = SawTooth(7),
     max_voices = 6,
-    make_envelope = pluck,
+    make_envelope = pedal,
     initial_key = 440Hz,
     beat_duration = 1s,
     ramp = 0.1s,
@@ -274,7 +267,7 @@ end
     function justly(sample_rate, song;
         wave = SawTooth(7),
         max_voices = 6,
-        make_envelope = pluck,
+        make_envelope = pedal,
         initial_key = 440Hz,
         beat_duration = 1s
     )
@@ -355,7 +348,7 @@ function justly(
     song;
     wave = SawTooth(7),
     max_voices = 6,
-    make_envelope = pluck,
+    make_envelope = pedal,
     initial_key = 440Hz,
     beat_duration = 1s,
 )
