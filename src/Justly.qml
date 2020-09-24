@@ -10,13 +10,8 @@ ApplicationWindow {
     color: "white"
     ScrollView {
         anchors.fill: parent
-        contentHeight: main.height + 3 * window.spacing
-        contentWidth: main.width + 3 * window.spacing
+        padding: window.spacing
         Column {
-            id: main
-            anchors.margins: window.spacing
-            anchors.left: parent.left
-            anchors.top: parent.top
             spacing: window.spacing
             Row {
                 spacing: parent.spacing

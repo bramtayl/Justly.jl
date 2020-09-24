@@ -29,15 +29,13 @@ Grid {
     Column {
         spacing: parent.spacing
         Rectangle {
-            width: note.width + 2 * parent.spacing
-            height: note.height + 2 * parent.spacing
+            width: note.width
+            height: note.height
             color: "lightgoldenrodyellow"
             Row {
                 id: note
                 spacing: window.spacing
-                anchors.top: parent.top
-                anchors.left: parent.left
-                anchors.margins: window.spacing
+                padding: window.spacing
                 Column {
                     spacing: parent.spacing
                     SpinBox {
@@ -59,8 +57,9 @@ Grid {
                         }
                     }
                 }
-                TextTemplate {
+                Text {
                     text: "× 2"
+                    anchors.verticalCenter: parent.verticalCenter
                 }
                 SpinBox {
                     value: octave
@@ -82,8 +81,9 @@ Grid {
                     Julia.release()
                 }
             }
-            TextTemplate {
+            Text {
                 text: " for "
+                anchors.verticalCenter: parent.verticalCenter
             }
             SpinBox {
                 value: beats

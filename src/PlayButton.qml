@@ -4,6 +4,5 @@ Button {
     height: parent.height
     contentItem: HeaderTemplate {
         text: "▶️"
-        color: "yellow"
     }
 }
