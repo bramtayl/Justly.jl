@@ -1,19 +1,39 @@
 import QtQuick 2.5
+import QtQuick.Controls 2.15
 
-Grid {
-    property int chord_index: index
+Column {
     spacing: window.spacing
-    verticalItemAlignment: Grid.AlignVCenter
-    columns: 2
-    RemoveButton {
-        onClicked: {
-            chords.remove(index)
+    property int chord_index: index
+    Row {
+        spacing: parent.spacing
+        RemoveButton {
+            anchors.verticalCenter: parent.verticalCenter
+            onClicked: {
+                chords.remove(index)
+            }
         }
-    }
-    ListTemplate {
-        orientation: ListView.Horizontal
-        model: notes_model
-        delegate: Note { }
+        Column {
+            spacing: parent.spacing
+            TextField {
+                anchors.horizontalCenter: parent.horizontalCenter
+                text: lyrics
+                onEditingFinished: {
+                    lyrics = text
+                }
+            }
+            Interval {}
+            Beats {}
+        }
+        AddButton {
+            onClicked: {
+                notes_model.insert(0, []);
+            }
+        }
+        ListTemplate {
+            orientation: ListView.Horizontal
+            model: notes_model
+            delegate: Note { }
+        }
     }
     AddButton {
         onClicked: {

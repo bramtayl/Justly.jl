@@ -21,9 +21,7 @@ ApplicationWindow {
                     }
                 }
                 Button {
-                    contentItem: HeaderTemplate {
-                        text: "📋"
-                    }
+                    text: "📋"
                     onClicked: {
                         yaml.text = Julia.make_yaml()
                         yaml.select(0, yaml.length - 1)

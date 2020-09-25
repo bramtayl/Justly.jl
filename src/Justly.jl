@@ -51,37 +51,62 @@ end
 
 Note() = Note(1, 1, 0, 1)
 
-function interval_beats(note::Note)
-    (note.numerator / note.denominator * 2.0^note.octave, note.beats)
-end
-
 function interval_beats(note::Dict)
     q_str(note["interval"]), note["beats"]
 end
 
 mutable struct Chord
-    notes::Vector{Note}
     lyrics::String
+    numerator::Int
+    denominator::Int
+    octave::Int
+    beats::Int
+    notes::Vector{Note}
     notes_model::ListModel
 end
 
-function Chord()
-    notes = [Note()]
-    Chord(notes, "", ListModel(notes))
+function interval_beats(note::Union{Note, Chord})
+    (note.numerator / note.denominator * 2.0^note.octave, note.beats)
 end
 
-get_notes(chord::Chord) = chord.notes
-get_notes(chord::Dict) = chord["notes"]
+function Chord()
+    notes = Note[]
+    Chord("", 1, 1, 0, 1, notes, ListModel(notes))
+end
+
+function interval_string_beats(note::Union{Chord, Note})
+    denominator = note.denominator
+    octave = note.octave
+    (
+        "interval" => string(
+            note.numerator,
+            if denominator != 1
+                '/', denominator
+            else
+                ()
+            end...,
+            if octave != 0
+                'o', octave
+            else
+                ()
+            end...
+        ),
+        "beats" => note.beats
+    )
+end
 
 function as_dict(note::Note)
     Dict(
-        "interval" => string(note.numerator, '/', note.denominator, 'o', note.octave),
-        "beats" => note.beats,
+        interval_string_beats(note)...
     )
 end
 
 function as_dict(chord::Chord)
-    Dict("notes" => map(as_dict, chord.notes), "lyrics" => chord.lyrics)
+    Dict(
+        "lyrics" => chord.lyrics,
+        interval_string_beats(chord)...,
+        "notes" => map(as_dict, chord.notes),
+    )
 end
 
 """
@@ -135,11 +160,11 @@ function justly_interactive(;
     sink = stream.sink
     chords = Chord[]
 
-    inner_press! = function (chord_index, voice_index)
+    inner_press! = function (qml_chord_index, qml_voice_index)
         key = initial_key
-        julia_chord_index = chord_index + 1
+        julia_chord_index = qml_chord_index + 1
         for chord in view(chords, 1:julia_chord_index)
-            key = key * interval_beats(chord.notes[1])[1]
+            key = key * interval_beats(chord)[1]
         end
         # make a small schedule, break it apart into pieces,
         # and put back together but repeat the sustain while holding
@@ -152,7 +177,7 @@ function justly_interactive(;
                     wave,
                     Cycles(
                         key *
-                        interval_beats(chords[julia_chord_index].notes[voice_index + 1])[1]
+                        interval_beats(chords[julia_chord_index].notes[qml_voice_index + 1])[1]
                     )
                 )
             ),
@@ -176,6 +201,7 @@ function justly_interactive(;
                 write(
                     sink,
                     AudioSchedule(
+                        # both producer and consumer can be on the same task
                         Channel{eltype(small_channel)}(0) do channel
                             put!(channel, ramp_up)
                             while !isready(sustain_end)
@@ -228,12 +254,12 @@ function justly_interactive(;
         first_chord = Chord()
         push!(first_chord.notes, Note())
         push!(chords, first_chord)
-        # note: this is 1, 2 in julia
-        inner_press!(0, 1)
+        # note: this is 1, 1 in julia
+        inner_press!(0, 0)
         inner_release!()
         inner_play()
         @test inner_make_yaml() ==
-              "- notes:\n    - beats: 1\n      interval: \"1/1o0\"\n    - beats: 1\n      interval: \"1/1o0\"\n  lyrics: \"\"\n"
+        "- beats: 1\n  interval: \"1\"\n  notes:\n    - beats: 1\n      interval: \"1\"\n  lyrics: \"\"\n" == "- beats: 1\n  interval: \"1\"\n  notes:\n    - beats: 1\n      interval: \"1\"\n  lyrics: \"\"\n"
     end
     close(sustain_end)
     close(stream)
@@ -241,11 +267,13 @@ function justly_interactive(;
 end
 export justly_interactive
 
+get_notes(chord::Chord) = chord.notes
+get_notes(chord::Dict) = chord["notes"]
+
 function play!(plan::Plan, chord, key, clock, wave, max_voices, make_envelope, beat_duration)
-    notes = get_notes(chord)
-    modulation, ahead = interval_beats(notes[1])
+    modulation, ahead = interval_beats(chord)
     key = key * modulation
-    for note in notes[2:end]
+    for note in get_notes(chord)
         interval, beats = interval_beats(note)
         add!(
             plan,
@@ -292,38 +320,40 @@ julia> using Unitful: Hz
 julia> const SAMPLE_RATE = 44100Hz;
 
 julia> justly(SAMPLE_RATE, YAML.load(\"""
-            - notes:
-                - beats: 1
-                  interval: "1"
+            - lyrics: "I"
+              interval: "1"
+              beats: 1
+              notes:
                 - beats: 1
                   interval: "1"
                 - beats: 1
                   interval: "3/2"
                 - beats: 1
                   interval: "5/4o1"
-              lyrics: ""
-            - notes:
-                - beats: 1
-                  interval: "2/3"
+              
+            - lyrics: "IV"
+              interval: "2/3"
+              beats: 1
+              notes:
                 - beats: 1
                   interval: "3/2"
                 - beats: 1
                   interval: "5/4o1"
                 - beats: 1
                   interval: "1o2"
-              lyrics: ""
-            - notes:
-                - beats: 1
-                  interval: "3/2"
+            - lyrics: "I"
+              interval: "3/2"
+              beats: 1
+              notes:
                 - beats: 1
                   interval: "1"
                 - beats: 1
                   interval: "3/2"
                 - beats: 1
                   interval: "5/4o1"
-              lyrics: ""
+              
          \"""))
-Plan with triggers at (0.0 s, 0.005 s, 0.9995839800394016 s, 1.0 s, 1.005 s, 1.9995839800394015 s, 2.0 s, 2.005 s, 2.9995839800394015 s, 3.0 s)
+Plan with triggers at (0.0 s, 0.01 s, 0.995 s, 1.0 s, 1.005 s, 1.01 s, 1.995 s, 2.0 s, 2.005 s, 2.01 s, 2.9949999999999997 s, 3.0049999999999994 s)
 ```
 
 Note also that top-level lists will be unnested, allowing for
@@ -332,15 +362,17 @@ repetition using YAML anchors.
 ```jldoctest justly
 julia> justly(SAMPLE_RATE, YAML.load(\"""
             - &fifth
-                - notes:
+                - lyrics: ""
+                  interval: "1"
+                  beats: 1
+                  notes:
                     - beats: 1
                       interval: "1"
                     - beats: 1
                       interval: "3/2"
-                  lyrics: ""
             - *fifth
         \"""))
-Plan with triggers at (0.0 s, 0.005 s, 0.9995839800394016 s, 1.0 s, 1.005 s, 1.9995839800394015 s, 2.0 s)
+Plan with triggers at (0.0 s, 0.01 s, 0.995 s, 1.0 s, 1.005 s, 1.01 s, 1.995 s, 2.005 s)
 ```
 """
 function justly(
