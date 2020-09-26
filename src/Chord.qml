@@ -15,14 +15,23 @@ Column {
         Column {
             spacing: parent.spacing
             TextField {
-                anchors.horizontalCenter: parent.horizontalCenter
                 text: lyrics
                 onEditingFinished: {
                     lyrics = text
                 }
             }
-            Interval {}
-            Beats {}
+            Row {
+                spacing: parent.spacing
+                Interval {
+                    key_text: "key = key ×"
+                }
+            }
+            Beats {
+                beat_text: "wait for"
+            }
+        }
+        ToolSeparator {
+            height: parent.height
         }
         AddButton {
             onClicked: {

@@ -14,8 +14,12 @@ Row {
         }
         Column {
             spacing: parent.spacing
-            Interval {}
-            Beats {}
+            Interval {
+                key_text: "key ×"
+            }
+            Beats {
+                beat_text: "play for"
+            }
             PlayButton {
                 onPressed: {
                     Julia.press(chord_index, index)

@@ -2,10 +2,11 @@ import QtQuick 2.5
 import QtQuick.Controls 2.15
 
 Row {
+    property string key_text
     spacing: parent.spacing
     Text {
         anchors.verticalCenter: parent.verticalCenter
-        text: "×"
+        text: key_text
     }
     Column {
         spacing: parent.spacing
