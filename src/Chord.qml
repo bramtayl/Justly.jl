@@ -1,42 +1,38 @@
 import QtQuick 2.5
 import QtQuick.Controls 2.15
 
-Column {
-    spacing: window.spacing
+ColumnTemplate {
     property int chord_index: index
-    Row {
-        spacing: parent.spacing
+    RowTemplate {
         RemoveButton {
             anchors.verticalCenter: parent.verticalCenter
-            onClicked: {
-                chords.remove(index)
-            }
+            model: chords
         }
-        Column {
-            spacing: parent.spacing
+        ColumnTemplate {
             TextField {
                 text: lyrics
                 onEditingFinished: {
                     lyrics = text
                 }
             }
-            Row {
-                spacing: parent.spacing
-                Interval {
-                    key_text: "key = key ×"
+            RowTemplate {
+                TextTemplate {
+                    text: "key = key ×"
                 }
+                Interval {}
             }
-            Beats {
-                beat_text: "wait for"
+            RowTemplate {
+                TextTemplate {
+                    text: "wait for"
+                }
+                Beats {}
             }
         }
         ToolSeparator {
             height: parent.height
         }
-        AddButton {
-            onClicked: {
-                notes_model.insert(0, []);
-            }
+        StartButton {
+            model: notes_model
         }
         ListTemplate {
             orientation: ListView.Horizontal
@@ -44,9 +40,7 @@ Column {
             delegate: Note { }
         }
     }
-    AddButton {
-        onClicked: {
-            chords.insert(index + 1, []);
-        }
+    InsertButton {
+        model: chords
     }
 }

@@ -1,7 +1,7 @@
 import QtQuick 2.15
 
 ListView {
-    spacing: parent.spacing
+    spacing: window.spacing
     displaced: Transition {
         NumberAnimation {properties: "x,y"}
     }

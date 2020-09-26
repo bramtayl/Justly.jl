@@ -1,15 +1,8 @@
 import QtQuick 2.5
 import QtQuick.Controls 2.15
 
-Row {
-    property string key_text
-    spacing: parent.spacing
-    Text {
-        anchors.verticalCenter: parent.verticalCenter
-        text: key_text
-    }
-    Column {
-        spacing: parent.spacing
+RowTemplate {
+    ColumnTemplate {
         SpinBox {
             value: numerator
             from: 1
@@ -29,8 +22,7 @@ Row {
             }
         }
     }
-    Text {
-        anchors.verticalCenter: parent.verticalCenter
+    TextTemplate {
         text: "2"
     }
     SpinBox {

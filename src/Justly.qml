@@ -11,10 +11,8 @@ ApplicationWindow {
     ScrollView {
         anchors.fill: parent
         padding: window.spacing
-        Column {
-            spacing: window.spacing
-            Row {
-                spacing: parent.spacing
+        ColumnTemplate {
+            RowTemplate {
                 PlayButton {
                     onClicked: {
                         Julia.play()
@@ -29,25 +27,20 @@ ApplicationWindow {
                     }
                 }
             }
-            AddButton {
-                onClicked: {
-                    chords.insert(0, []);
-                }
+            StartButton {
+                model: chords
             }
             ListTemplate {
-                id: chords_view
                 model: chords
                 delegate: Chord { }
+            }
+            TextEdit {
+                id: yaml
             }
         }
     }
     Timer {
         running: test
         onTriggered: Qt.quit()
-    }
-    TextEdit {
-        id: yaml
-        visible: false
-        text: ""
     }
 }
