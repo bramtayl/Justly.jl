@@ -1,6 +1,15 @@
-import QtQuick.Controls 2.5
+import QtQuick.Controls 2.15
 
-RoundButton {
+Button {
+    id: button
     property var model
-    text: "+"
+    background: Circle {
+        id: background
+        anchors.centerIn: parent
+        color: button.down ? "green" : "limegreen"
+    }
+    contentItem: ButtonText {
+        text: "+"
+        color: reverse_color
+    }
 }

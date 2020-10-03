@@ -1,0 +1,3 @@
+SmallText {
+    text: "×"
+}

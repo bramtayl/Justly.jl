@@ -1,0 +1,3 @@
+DisplayText {
+    text: "𝄞"
+}

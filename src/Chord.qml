@@ -9,27 +9,34 @@ ColumnTemplate {
             model: chords
         }
         ColumnTemplate {
-            TextField {
-                text: lyrics
-                onEditingFinished: {
-                    lyrics = text
+            RowTemplate {
+                SmallText {
+                    text: "words:"
+                }
+                TextField {
+                    text: lyrics
+                    onEditingFinished: {
+                        lyrics = text
+                    }
                 }
             }
             RowTemplate {
-                TextTemplate {
-                    text: "key = key ×"
+                Key { }
+                SmallText {
+                    text: "="
                 }
-                Interval {}
+                Key { }
+                Times { }
+                Interval { }
             }
             RowTemplate {
-                TextTemplate {
-                    text: "wait for"
+                anchors.right: parent.right
+                DisplayText {
+                    text: "⏸"
                 }
-                Beats {}
+                For { }
+                Beats { }
             }
-        }
-        ToolSeparator {
-            height: parent.height
         }
         StartButton {
             model: notes_model

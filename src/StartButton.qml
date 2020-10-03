@@ -1,5 +1,3 @@
-AddButton {
-    onClicked: {
-        model.insert(0, []);
-    }
+InsertButton {
+    property int index: -1
 }

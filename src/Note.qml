@@ -3,32 +3,28 @@ import QtQuick.Controls 2.15
 import org.julialang 1.0
 
 RowTemplate {
-    ColumnTemplate {
+    ColumnTemplate { 
         RemoveButton {
             anchors.horizontalCenter: parent.horizontalCenter
             model: notes_model
         }
-        ColumnTemplate {
-            RowTemplate {
-                TextTemplate {
-                    text: "key ×"
+        RowTemplate {
+            Key { }
+            Times { }
+            Interval {}
+        }
+        RowTemplate {
+            anchors.right: parent.right
+            PlayButton {
+                onPressed: {
+                    Julia.press(chord_index, index)
                 }
-                Interval {}
+                onReleased: {
+                    Julia.release()
+                }
             }
-            RowTemplate {
-                PlayButton {
-                    onPressed: {
-                        Julia.press(chord_index, index)
-                    }
-                    onReleased: {
-                        Julia.release()
-                    }
-                }
-                TextTemplate {
-                    text: "for"
-                }
-                Beats {}
-            }
+            For { }
+            Beats { }
         }
     }
     InsertButton {

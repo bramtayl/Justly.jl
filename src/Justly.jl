@@ -32,11 +32,11 @@ end
 export pluck
 
 """
-    pedal(duration; slope = 1 / 0.01s, peak = 1, overlap = 1/2)
+    pedal(duration; slope = 1 / 0.1s, peak = 1, overlap = 1/2)
 
 A sustain with steep ramps on either side. Increase overlap to make the sound more legato.
 """
-function pedal(duration; slope = 1 / 0.01s, peak = 1, overlap = 1/2)
+function pedal(duration; slope = 1 / 0.1s, peak = 1, overlap = 1/2)
     ramp = peak / slope
     (0, Line => ramp, peak, Line => (duration - ramp - ramp + ramp * overlap), peak, Line => ramp, 0)
 end
@@ -75,11 +75,16 @@ function Chord()
 end
 
 function interval_string_beats(note::Union{Chord, Note})
+    numerator = note.numerator
     denominator = note.denominator
     octave = note.octave
     (
         "interval" => string(
-            note.numerator,
+            if numerator != 1
+                (numerator,)
+            else
+                ()
+            end...,
             if denominator != 1
                 '/', denominator
             else
@@ -115,8 +120,8 @@ end
         wave = SawTooth(7),
         max_voices = 6,
         make_envelope = pedal,
-        initial_key = 440Hz,
-        beat_duration = 1s,
+        initial_key = 220Hz,
+        beat_duration = 0.6s,
         ramp = 0.1s,
     )
 
@@ -149,8 +154,8 @@ function justly_interactive(;
     wave = SawTooth(7),
     max_voices = 6,
     make_envelope = pedal,
-    initial_key = 440Hz,
-    beat_duration = 1s,
+    initial_key = 220Hz,
+    beat_duration = 0.6s,
     ramp = 0.1s,
     test = false,
 )

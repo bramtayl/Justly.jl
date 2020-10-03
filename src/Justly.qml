@@ -6,24 +6,21 @@ import org.julialang 1.0
 ApplicationWindow {
     visible: true
     id: window
-    property int spacing: 10
-    color: "white"
+    property int default_spacing: 12
+    property var button_size: 40
+    property var large_text: 24
+    property var small_text: 12
+    property var reverse_color: "white"
+    property var dark: "black"
+    color: dark
     ScrollView {
         anchors.fill: parent
-        padding: window.spacing
+        padding: default_spacing
         ColumnTemplate {
             RowTemplate {
                 PlayButton {
                     onClicked: {
                         Julia.play()
-                    }
-                }
-                Button {
-                    text: "📋"
-                    onClicked: {
-                        yaml.text = Julia.make_yaml()
-                        yaml.select(0, yaml.length - 1)
-                        yaml.copy()
                     }
                 }
             }
@@ -36,7 +33,11 @@ ApplicationWindow {
             }
             TextEdit {
                 id: yaml
-            }
+                selectByMouse: true
+                readOnly: true
+                color: reverse_color
+                font.pointSize: small_text
+            }         
         }
     }
     Timer {
