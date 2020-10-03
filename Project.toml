@@ -14,7 +14,7 @@ Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
 YAML = "ddb6d928-2868-570f-bddf-ab3f9cf99eb6"
 
 [compat]
-AudioSchedules = "0.1"
+AudioSchedules = "0.1, 0.2"
 Observables = "0.3"
 PortAudio = "1.1"
 QML = "0.5,0.6"
