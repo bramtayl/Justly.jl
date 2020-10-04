@@ -8,7 +8,7 @@ ApplicationWindow {
     id: window
     property int default_spacing: 12
     property var button_size: 40
-    property var large_text: 24
+    property var large_text: 18
     property var small_text: 12
     property var reverse_color: "white"
     property var dark: "black"
@@ -25,23 +25,31 @@ ApplicationWindow {
                 }
             }
             StartButton {
-                model: chords
+                model: julia_arguments.chords_model
             }
             ListTemplate {
-                model: chords
+                id: chords_view
+                model: julia_arguments.chords_model
                 delegate: Chord { }
             }
-            TextEdit {
+            TextArea {
                 id: yaml
                 selectByMouse: true
-                readOnly: true
-                color: reverse_color
                 font.pointSize: small_text
-            }         
+                onEditingFinished: {
+                    julia_arguments.observable_yaml = text
+                    Julia.from_yaml()
+                }
+                background: Rectangle {
+                    color: reverse_color
+                    border.color: yaml.focus ? "steelblue" : "transparent"
+                    border.width: 2
+                }
+            } 
         }
     }
     Timer {
-        running: test
+        running: julia_arguments.test
         onTriggered: Qt.quit()
     }
 }

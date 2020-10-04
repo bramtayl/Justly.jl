@@ -14,6 +14,7 @@ Button {
     }
     onClicked: {
         model.remove(index);
-        yaml.text = Julia.make_yaml()
+        Julia.to_yaml();
+        yaml.text = julia_arguments.observable_yaml
     }
 }

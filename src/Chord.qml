@@ -6,7 +6,7 @@ ColumnTemplate {
     RowTemplate {
         RemoveButton {
             anchors.verticalCenter: parent.verticalCenter
-            model: chords
+            model: julia_arguments.chords_model
         }
         ColumnTemplate {
             RowTemplate {
@@ -14,9 +14,9 @@ ColumnTemplate {
                     text: "words:"
                 }
                 TextField {
-                    text: lyrics
+                    text: words
                     onEditingFinished: {
-                        lyrics = text
+                        words = text
                     }
                 }
             }
@@ -48,6 +48,6 @@ ColumnTemplate {
         }
     }
     InsertButton {
-        model: chords
+        model: julia_arguments.chords_model
     }
 }

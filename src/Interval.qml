@@ -10,7 +10,8 @@ RowTemplate {
             from: 1
             onValueModified: {
                 numerator = value;
-                yaml.text = Julia.make_yaml()
+                Julia.to_yaml();
+                yaml.text = julia_arguments.observable_yaml
             }
         }
         ToolSeparator {
@@ -22,7 +23,8 @@ RowTemplate {
             from: 1
             onValueModified: {
                 denominator = value;
-                yaml.text = Julia.make_yaml()
+                Julia.to_yaml();
+                yaml.text = julia_arguments.observable_yaml
             }
         }
     }
@@ -35,7 +37,8 @@ RowTemplate {
         from: -99
         onValueModified: {
             octave = value;
-            yaml.text = Julia.make_yaml()
+            Julia.to_yaml();
+            yaml.text = julia_arguments.observable_yaml
         }
     }
 }
