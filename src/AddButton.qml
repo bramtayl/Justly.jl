@@ -10,6 +10,6 @@ Button {
     }
     contentItem: ButtonText {
         text: "+"
-        color: reverse_color
+        color: positive_color
     }
 }

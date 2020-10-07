@@ -1,5 +1,6 @@
 import QtQuick 2.5
 import QtQuick.Controls 2.15
+import org.julialang 1.0
 
 ColumnTemplate {
     property int chord_index: index
@@ -10,14 +11,13 @@ ColumnTemplate {
         }
         ColumnTemplate {
             RowTemplate {
-                SmallText {
-                    text: "words:"
-                }
-                TextField {
-                    text: words
-                    onEditingFinished: {
-                        words = text
+                PlayButton {
+                    onClicked: {
+                        Julia.play(index)
                     }
+                }
+                SmallText {
+                    text: "from"
                 }
             }
             RowTemplate {
@@ -30,7 +30,15 @@ ColumnTemplate {
                 Interval { }
             }
             RowTemplate {
-                anchors.right: parent.right
+                SmallText {
+                    text: "words:"
+                }
+                TextField {
+                    text: words
+                    onEditingFinished: {
+                        words = text
+                    }
+                }
                 DisplayText {
                     text: "⏸"
                 }

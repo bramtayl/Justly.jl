@@ -1,7 +1,20 @@
 module Justly
 
+# TODO: play the rest
+
 using AudioSchedules:
-    add!, AudioSchedule, Cycles, duration, Hook, Line, Map, Plan, q_str, SawTooth, Scale
+    add!,
+    AudioSchedule,
+    Cycles,
+    duration,
+    Hook,
+    Line,
+    Map,
+    Plan,
+    q_str,
+    SawTooth,
+    Scale,
+    triples
 import Base: Dict
 using Base.Threads: @spawn
 using Observables: Observable
@@ -41,9 +54,17 @@ export pluck
 
 A sustain with steep ramps on either side. Increase overlap to make the sound more legato.
 """
-function pedal(duration; slope = 1 / 0.1s, peak = 1, overlap = 1/2)
+function pedal(duration; slope = 1 / 0.1s, peak = 1, overlap = 1 / 2)
     ramp = peak / slope
-    (0, Line => ramp, peak, Line => (duration - ramp - ramp + ramp * overlap), peak, Line => ramp, 0)
+    (
+        0,
+        Line => ramp,
+        peak,
+        Line => (duration - ramp - ramp + ramp * overlap),
+        peak,
+        Line => ramp,
+        0,
+    )
 end
 export pedal
 
@@ -67,12 +88,17 @@ function represent(rational::Rational)
         octave = octave - 1
     end
     if iseven(rational.num)
-        rational = rational // 2
+        rational = rational//2
         octave = octave + 1
     end
     rational.num, rational.den, octave
 end
 
+"""
+    Chord(dictionary::Dict)
+
+A Julia representation of a chord. Pass a vector of `Chord`s to [`justly_interactive`](@ref).
+"""
 mutable struct Chord
     words::String
     numerator::Int
@@ -82,16 +108,16 @@ mutable struct Chord
     notes::Vector{Note}
     notes_model::ListModel
 end
+export Chord
 
 function Chord(dictionary::Dict)
     interval, beats = interval_beats(dictionary)
     note_dictionaries = dictionary["notes"]
-    notes = 
-        if note_dictionaries !== nothing
-            map(Note, note_dictionaries )
-        else
-            Note[]
-        end
+    notes = if note_dictionaries !== nothing
+        map(Note, note_dictionaries)
+    else
+        Note[]
+    end
     Chord(dictionary["words"], represent(interval)..., beats, notes, ListModel(notes))
 end
 
@@ -118,31 +144,25 @@ function interval_string_beats(note::Union{Chord, Note})
     denominator = note.denominator
     octave = note.octave
     (
-        "interval" => string(
-            if numerator != 1
-                (numerator,)
-            else
-                ()
-            end...,
-            if denominator != 1
-                '/', denominator
-            else
-                ()
-            end...,
-            if octave != 0
-                'o', octave
-            else
-                ()
-            end...
-        ),
-        "beats" => note.beats
+        "interval" => string(if numerator != 1
+            (numerator,)
+        else
+            ()
+        end..., if denominator != 1
+            '/', denominator
+        else
+            ()
+        end..., if octave != 0
+            'o', octave
+        else
+            ()
+        end...),
+        "beats" => note.beats,
     )
 end
 
 function Dict(note::Note)
-    Dict(
-        interval_string_beats(note)...
-    )
+    Dict(interval_string_beats(note)...)
 end
 
 function Dict(chord::Chord)
@@ -153,8 +173,16 @@ function Dict(chord::Chord)
     )
 end
 
+function update_key(chords, initial_key, chord_index)
+    key = initial_key
+    for chord in view(chords, 1:(chord_index + 1))
+        key = key * interval_beats(chord)[1]
+    end
+    key
+end
+
 """
-    function justly_interactive(;
+    function justly_interactive(chords::Vector{Chord};
         sample_rate = 44100Hz,
         wave = SawTooth(7),
         max_voices = 6,
@@ -167,6 +195,8 @@ end
 Open an interactive interface where you can interactively write Justly text. Once you have
 finished writing, you can copy the results to the clipboard as YAML. Then, you can use
 [`play_justly`](@ref) to play them.
+
+`chords` should be a vector of [`Chord`] to start editing.
 
 `wave` should be a function which takes an angle in radians and returns and amplitude between 0 and 1.
 To avoid peaking, do not exceed `max_voices` playing at once.
@@ -185,10 +215,13 @@ For more information, see the README.
 ```jldoctest
 julia> using Justly
 
-julia> justly_interactive(test = true)
+julia> chords = Chord[];
+
+julia> justly_interactive(chords; test = true)
 ```
 """
-function justly_interactive(;
+function justly_interactive(
+    chords;
     sample_rate = 44100Hz,
     wave = SawTooth(7),
     max_voices = 6,
@@ -202,35 +235,33 @@ function justly_interactive(;
     sustain_end = Channel{Nothing}(0)
     stream = PortAudioStream(samplerate = sample_rate / Hz)
     sink = stream.sink
-    chords = Chord[]
     chords_model = ListModel(chords)
     observable_yaml = Observable("")
     julia_arguments = JuliaPropertyMap(
         "observable_yaml" => observable_yaml,
         "chords_model" => chords_model,
-        "test" => test
+        "test" => test,
     )
 
-    press! = function (qml_chord_index, qml_voice_index)
-        key = initial_key
-        julia_chord_index = qml_chord_index + 1
-        for chord in view(chords, 1:julia_chord_index)
-            key = key * interval_beats(chord)[1]
-        end
+    press! = function (chord_index, voice_index)
+        key = update_key(chords, initial_key, chord_index)
         # make a small schedule, break it apart into pieces,
         # and put back together but repeat the sustain while holding
-        plan = Plan(sample_rate)
-        add!(
-            plan,
+        (
+            (ramp_up_synthesizer, ramp_up_start, ramp_up_duration),
+            (sustain_synthesizer, sustain_start, sustain_duration),
+            (ramp_down_synthesizer, ramp_down_start, ramp_down_duration),
+        ) = triples(
+            sample_rate,
             Map(
                 Scale(1 / max_voices),
                 Map(
                     wave,
                     Cycles(
                         key *
-                        interval_beats(chords[julia_chord_index].notes[qml_voice_index + 1])[1]
-                    )
-                )
+                        interval_beats(chords[chord_index + 1].notes[voice_index + 1])[1],
+                    ),
+                ),
             ),
             0s,
             0,
@@ -241,29 +272,24 @@ function justly_interactive(;
             Line => ramp,
             0,
         )
-        small_plan = AudioSchedule(plan)
-        ramp_up = (small_plan.stateful, small_plan.has_left)
-        small_channel = small_plan.channel
-        sustain, ramp_down = small_channel
+        ramp_up = (ramp_up_synthesizer, round(Int, ramp_up_duration * sample_rate))
+        sustain = (sustain_synthesizer, round(Int, sustain_duration * sample_rate))
+        ramp_down =
+            (ramp_down_synthesizer, round(Int, ramp_down_duration * sample_rate))
+        # both producer and consumer can be on the same task
+        feed! = function (channel)
+            put!(channel, ramp_up)
+            while !isready(sustain_end)
+                put!(channel, sustain)
+            end
+            take!(sustain_end)
+            put!(channel, ramp_down)
+        end
         # we can't do this on the main thread
         # because the main thread needs to listen for the release         
         @spawn begin
             lock(speaker) do
-                write(
-                    sink,
-                    AudioSchedule(
-                        # both producer and consumer can be on the same task
-                        Channel{eltype(small_channel)}(0) do channel
-                            put!(channel, ramp_up)
-                            while !isready(sustain_end)
-                                put!(channel, sustain)
-                            end
-                            take!(sustain_end)
-                            put!(channel, ramp_down)
-                        end,
-                        sample_rate,
-                    ),
-                )
+                write(sink, AudioSchedule(Channel{Tuple{Any, Int}}(feed!, 0), sample_rate))
             end
         end
     end
@@ -297,14 +323,15 @@ function justly_interactive(;
     end
     qmlfunction("from_yaml", from_yaml!)
 
-    play = function ()
+    play = function (index,)
+        key = update_key(chords, initial_key, index - 1)
         plan = justly(
             sample_rate,
-            chords;
+            @view chords[(index + 1):end];
             wave = wave,
             max_voices = max_voices,
             make_envelope = make_envelope,
-            initial_key = initial_key,
+            initial_key = key,
             beat_duration = beat_duration,
         )
         song = read(AudioSchedule(plan), duration(plan))
@@ -326,7 +353,7 @@ function justly_interactive(;
         # note: this is 1, 1 in julia
         press!(0, 0)
         release!()
-        play()
+        play(0)
         to_yaml!()
         @test observable_yaml[] == simple_yaml
     end
@@ -339,14 +366,23 @@ export justly_interactive
 get_notes(chord::Chord) = chord.notes
 get_notes(chord::Dict) = chord["notes"]
 
-function play!(plan::Plan, chord, key, clock, wave, max_voices, make_envelope, beat_duration)
+function play!(
+    plan::Plan,
+    chord,
+    key,
+    clock,
+    wave,
+    max_voices,
+    make_envelope,
+    beat_duration,
+)
     modulation, ahead = interval_beats(chord)
     key = key * modulation
     for note in get_notes(chord)
         interval, beats = interval_beats(note)
         add!(
             plan,
-            Map(Scale(1/max_voices), Map(wave, Cycles(key * interval))),
+            Map(Scale(1 / max_voices), Map(wave, Cycles(key * interval))),
             clock,
             make_envelope(beats * beat_duration)...,
         )
@@ -456,7 +492,8 @@ function justly(
     key = initial_key
     plan = Plan(sample_rate)
     for chord in song
-        key, clock = play!(plan, chord, key, clock, wave, max_voices, make_envelope, beat_duration)
+        key, clock =
+            play!(plan, chord, key, clock, wave, max_voices, make_envelope, beat_duration)
     end
     plan
 end
