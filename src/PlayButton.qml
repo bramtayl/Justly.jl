@@ -5,7 +5,10 @@ Button {
     id: button
     background: Square {
         id: background
-        color: button.down ? "goldenrod" : "yellow"
+        color: pressed ? "goldenrod" : "yellow"
+    }
+    onReleased: {
+        julia_arguments.observable_sustaining = false
     }
     contentItem: ButtonText {
         text: "▶️"

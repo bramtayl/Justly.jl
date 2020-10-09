@@ -12,7 +12,7 @@ ColumnTemplate {
         ColumnTemplate {
             RowTemplate {
                 PlayButton {
-                    onClicked: {
+                    onPressed: {
                         Julia.play(index)
                     }
                 }
@@ -30,6 +30,7 @@ ColumnTemplate {
                 Interval { }
             }
             RowTemplate {
+                anchors.right: parent.right
                 SmallText {
                     text: "words:"
                 }

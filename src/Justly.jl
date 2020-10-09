@@ -17,11 +17,13 @@ using AudioSchedules:
     triples
 import Base: Dict
 using Base.Threads: @spawn
-using Observables: Observable
+using Observables: Observable, on
 using PortAudio: PortAudioStream
 using Observables: Observable
+using Base.Threads: Atomic
 using QML:
     addrole,
+    @emit,
     exec,
     force_model_update,
     get_julia_data,
@@ -232,15 +234,22 @@ function justly_interactive(
     test = false,
 )
     speaker = ReentrantLock()
-    sustain_end = Channel{Nothing}(0)
     stream = PortAudioStream(samplerate = sample_rate / Hz)
     sink = stream.sink
     chords_model = ListModel(chords)
     observable_yaml = Observable("")
+    sustaining = false
+    observable_sustaining = Observable(sustaining)
+    atomic_sustaining = Atomic{Bool}(sustaining)
+    on(observable_sustaining) do value
+        atomic_sustaining[] = value
+    end
+    sustaining_lock = ReentrantLock()
     julia_arguments = JuliaPropertyMap(
         "observable_yaml" => observable_yaml,
         "chords_model" => chords_model,
         "test" => test,
+        "observable_sustaining" => observable_sustaining
     )
 
     press! = function (chord_index, voice_index)
@@ -279,26 +288,21 @@ function justly_interactive(
         # both producer and consumer can be on the same task
         feed! = function (channel)
             put!(channel, ramp_up)
-            while !isready(sustain_end)
+            while atomic_sustaining[]
                 put!(channel, sustain)
             end
-            take!(sustain_end)
             put!(channel, ramp_down)
         end
         # we can't do this on the main thread
         # because the main thread needs to listen for the release         
         @spawn begin
+            observable_sustaining[] = true
             lock(speaker) do
                 write(sink, AudioSchedule(Channel{Tuple{Any, Int}}(feed!, 0), sample_rate))
             end
         end
     end
     qmlfunction("press", press!)
-
-    release! = function ()
-        put!(sustain_end, nothing)
-    end
-    qmlfunction("release", release!)
 
     to_yaml! = function ()
         observable_yaml[] = YAML.write(map(Dict, chords))
@@ -310,9 +314,8 @@ function justly_interactive(
         while length(chords_model) > 0
             delete!(chords_model, 1)
         end
-        yaml = observable_yaml[]
         try
-            for dictionary in YAML.load(yaml)
+            for dictionary in YAML.load(observable_yaml[])
                 push!(chords_model, Chord(dictionary))
             end
         catch error
@@ -323,9 +326,9 @@ function justly_interactive(
     end
     qmlfunction("from_yaml", from_yaml!)
 
-    play = function (index,)
+    play = function (index)
         key = update_key(chords, initial_key, index - 1)
-        plan = justly(
+        a_schedule = AudioSchedule(justly(
             sample_rate,
             @view chords[(index + 1):end];
             wave = wave,
@@ -333,11 +336,24 @@ function justly_interactive(
             make_envelope = make_envelope,
             initial_key = key,
             beat_duration = beat_duration,
-        )
-        song = read(AudioSchedule(plan), duration(plan))
-        @spawn begin
+        ))
+        first_one = (a_schedule.stateful, a_schedule.has_left)
+        rest = a_schedule.channel
+        feed! = function (channel)
+            put!(channel, first_one)
+            while atomic_sustaining[]
+                if isready(rest)
+                    put!(channel, take!(rest))
+                else
+                    observable_sustaining[] = false
+                    break
+                end
+            end
+        end
+        @spawn begin 
+            observable_sustaining[] = true
             lock(speaker) do
-                write(sink, song)
+                write(sink, AudioSchedule(Channel{Tuple{Any, Int}}(feed!, 0), sample_rate))
             end
         end
     end
@@ -352,12 +368,11 @@ function justly_interactive(
         from_yaml!()
         # note: this is 1, 1 in julia
         press!(0, 0)
-        release!()
+        observable_sustaining[] = false
         play(0)
         to_yaml!()
         @test observable_yaml[] == simple_yaml
     end
-    close(sustain_end)
     close(stream)
     nothing
 end

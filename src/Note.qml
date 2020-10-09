@@ -19,9 +19,6 @@ RowTemplate {
                 onPressed: {
                     Julia.press(chord_index, index)
                 }
-                onReleased: {
-                    Julia.release()
-                }
             }
             For { }
             Beats { }
