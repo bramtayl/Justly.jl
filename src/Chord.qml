@@ -31,6 +31,13 @@ ColumnTemplate {
             }
             RowTemplate {
                 anchors.right: parent.right
+                DisplayText {
+                    text: "⏸"
+                }
+                For { }
+                Beats { }
+            }
+            RowTemplate {
                 SmallText {
                     text: "words:"
                 }
@@ -40,11 +47,6 @@ ColumnTemplate {
                         words = text
                     }
                 }
-                DisplayText {
-                    text: "⏸"
-                }
-                For { }
-                Beats { }
             }
         }
         StartButton {

@@ -7,6 +7,7 @@ using AudioSchedules:
     AudioSchedule,
     Cycles,
     duration,
+    feed!,
     Hook,
     Line,
     Map,
@@ -20,7 +21,6 @@ using Base.Threads: @spawn
 using Observables: Observable, on
 using PortAudio: PortAudioStream
 using Observables: Observable
-using Base.Threads: Atomic
 using QML:
     addrole,
     @emit,
@@ -237,21 +237,14 @@ function justly_interactive(
     stream = PortAudioStream(samplerate = sample_rate / Hz)
     sink = stream.sink
     chords_model = ListModel(chords)
+    # TODO: a channel seems weird to use here...
+    released = Channel{Nothing}(0)
     observable_yaml = Observable("")
-    sustaining = false
-    observable_sustaining = Observable(sustaining)
-    atomic_sustaining = Atomic{Bool}(sustaining)
-    on(observable_sustaining) do value
-        atomic_sustaining[] = value
-    end
-    sustaining_lock = ReentrantLock()
     julia_arguments = JuliaPropertyMap(
         "observable_yaml" => observable_yaml,
         "chords_model" => chords_model,
-        "test" => test,
-        "observable_sustaining" => observable_sustaining
+        "test" => test
     )
-
     press! = function (chord_index, voice_index)
         key = update_key(chords, initial_key, chord_index)
         # make a small schedule, break it apart into pieces,
@@ -286,23 +279,30 @@ function justly_interactive(
         ramp_down =
             (ramp_down_synthesizer, round(Int, ramp_down_duration * sample_rate))
         # both producer and consumer can be on the same task
-        feed! = function (channel)
-            put!(channel, ramp_up)
-            while atomic_sustaining[]
-                put!(channel, sustain)
-            end
-            put!(channel, ramp_down)
-        end
         # we can't do this on the main thread
         # because the main thread needs to listen for the release         
         @spawn begin
-            observable_sustaining[] = true
             lock(speaker) do
-                write(sink, AudioSchedule(Channel{Tuple{Any, Int}}(feed!, 0), sample_rate))
+                write(sink, AudioSchedule(
+                    Channel{Tuple{Any, Int}}(0) do channel
+                        put!(channel, ramp_up)
+                        while !isready(released)
+                            put!(channel, sustain)
+                        end
+                        take!(released)
+                        put!(channel, ramp_down)
+                    end,
+                    sample_rate
+                ))
             end
         end
     end
     qmlfunction("press", press!)
+
+    release! = function ()
+        put!(released, nothing)
+    end
+    qmlfunction("release", release!)
 
     to_yaml! = function ()
         observable_yaml[] = YAML.write(map(Dict, chords))
@@ -328,7 +328,8 @@ function justly_interactive(
 
     play = function (index)
         key = update_key(chords, initial_key, index - 1)
-        a_schedule = AudioSchedule(justly(
+        # TODO: feed channel in directly 
+        plan = justly(
             sample_rate,
             @view chords[(index + 1):end];
             wave = wave,
@@ -336,24 +337,16 @@ function justly_interactive(
             make_envelope = make_envelope,
             initial_key = key,
             beat_duration = beat_duration,
-        ))
-        first_one = (a_schedule.stateful, a_schedule.has_left)
-        rest = a_schedule.channel
-        feed! = function (channel)
-            put!(channel, first_one)
-            while atomic_sustaining[]
-                if isready(rest)
-                    put!(channel, take!(rest))
-                else
-                    observable_sustaining[] = false
-                    break
-                end
-            end
-        end
-        @spawn begin 
-            observable_sustaining[] = true
+        )
+        @spawn begin
             lock(speaker) do
-                write(sink, AudioSchedule(Channel{Tuple{Any, Int}}(feed!, 0), sample_rate))
+                write(sink, AudioSchedule(
+                    Channel{Tuple{Any, Int}}(0) do channel
+                        feed!(channel, plan, released)
+                        take!(released)
+                    end, 
+                    sample_rate
+                ))
             end
         end
     end
@@ -368,7 +361,7 @@ function justly_interactive(
         from_yaml!()
         # note: this is 1, 1 in julia
         press!(0, 0)
-        observable_sustaining[] = false
+        wait(sustaining)
         play(0)
         to_yaml!()
         @test observable_yaml[] == simple_yaml

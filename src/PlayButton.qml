@@ -1,5 +1,6 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
+import org.julialang 1.0
 
 Button {
     id: button
@@ -8,7 +9,7 @@ Button {
         color: pressed ? "goldenrod" : "yellow"
     }
     onReleased: {
-        julia_arguments.observable_sustaining = false
+        Julia.release()
     }
     contentItem: ButtonText {
         text: "▶️"
