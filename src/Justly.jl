@@ -16,6 +16,7 @@ using AudioSchedules:
     Scale,
     triples
 import Base: Dict
+import Base.Iterators: takewhile
 using Base.Threads: Atomic, @spawn
 using Observables: Observable, on
 using PortAudio: PortAudioStream
@@ -190,6 +191,7 @@ end
         make_envelope = pedal,
         initial_key = 220Hz,
         beat_duration = 0.6s,
+        latency = 1.0,
         ramp = 0.1s,
     )
 
@@ -204,6 +206,7 @@ To avoid peaking, do not exceed `max_voices` playing at once.
 `make_envelope` should be a function that takes a duration in units of time (like `s`) and returns a tuple of envelope segments that can be splatted into `AudioSchedules.add!`. 
 `initial_key` should be in frequency units, like `Hz`.
 `beat_duration` should be in time units, like `s`.
+`latency` will be passed to `PortAudioStream`. Consider using a relatively large number.
 `ramp` should be in time units, like `s`, and will control the ramp time for note previews.
 
 The first interval in the chord will modulate the key, and tells how many beats before the
@@ -229,68 +232,67 @@ function justly_interactive(
     make_envelope = pedal,
     initial_key = 220Hz,
     beat_duration = 0.6s,
+    latency = 1.0,
     ramp = 0.1s,
     test = false,
 )
     speaker = ReentrantLock()
-    stream = PortAudioStream(samplerate = sample_rate / Hz)
+    stream = PortAudioStream(samplerate = sample_rate / Hz, latency = latency)
     sink = stream.sink
     chords_model = ListModel(chords)
     # TODO: a channel seems weird to use here...
     observable_yaml = Observable("")
-    sustaining = Atomic{Bool}(false)
+    released = Channel{Nothing}(0)
     julia_arguments = JuliaPropertyMap(
         "observable_yaml" => observable_yaml,
         "chords_model" => chords_model,
-        "test" => test
+        "test" => test,
     )
     press! = function (chord_index, voice_index)
         key = update_key(chords, initial_key, chord_index)
         # make a small schedule, break it apart into pieces,
         # and put back together but repeat the sustain while holding
-        (
-            (ramp_up_synthesizer, ramp_up_start, ramp_up_duration),
-            (sustain_synthesizer, sustain_start, sustain_duration),
-            (ramp_down_synthesizer, ramp_down_start, ramp_down_duration),
-        ) = triples(
-            sample_rate,
-            Map(
-                Scale(1 / max_voices),
+        (ramp_up, sustain, ramp_down) = map(
+            function ((stateful, start, duration),)
+                stateful, round(Int, duration * sample_rate)
+            end,
+            triples(
+                sample_rate,
                 Map(
-                    wave,
-                    Cycles(
-                        key *
-                        interval_beats(chords[chord_index + 1].notes[voice_index + 1])[1],
+                    Scale(1 / max_voices),
+                    Map(
+                        wave,
+                        Cycles(
+                            key *
+                            interval_beats(chords[chord_index + 1].notes[voice_index + 1])[1],
+                        ),
                     ),
                 ),
+                0s,
+                0,
+                Line => ramp,
+                1,
+                Line => ramp,
+                1,
+                Line => ramp,
+                0,
             ),
-            0s,
-            0,
-            Line => ramp,
-            1,
-            Line => ramp,
-            1,
-            Line => ramp,
-            0,
         )
-        ramp_up = (ramp_up_synthesizer, round(Int, ramp_up_duration * sample_rate))
-        sustain = (sustain_synthesizer, round(Int, sustain_duration * sample_rate))
-        ramp_down = (ramp_down_synthesizer, round(Int, ramp_down_duration * sample_rate))
         @spawn lock(speaker) do
-            sustaining[] = true
             write(stream, AudioSchedule(Channel{Tuple{Any, Int}}(0) do channel
-                put!(channel, ramp_up)
-                while sustaining[]
-                    put!(channel, sustain)
-                end
-                put!(channel, ramp_down)    
-            end, sample_rate))
+                    put!(channel, ramp_up)
+                    while !isready(released)
+                        put!(channel, sustain)
+                    end
+                    take!(released)
+                    put!(channel, ramp_down)
+                end, sample_rate))
         end
     end
     qmlfunction("press", press!)
 
     release! = function ()
-        sustaining[] = false
+        put!(released, nothing)
     end
     qmlfunction("release", release!)
 
@@ -329,16 +331,10 @@ function justly_interactive(
             beat_duration = beat_duration,
         )
         @spawn lock(speaker) do
-            sustaining[] = true
-            write(stream, AudioSchedule(Channel{Tuple{Any, Int}}(0) do channel
-                for stateful_samples in plan
-                    if sustaining[]
-                        put!(channel, stateful_samples)
-                    else
-                        break
-                    end
-                end
-            end, sample_rate))
+            write(stream, AudioSchedule(takewhile(plan) do stateful_samples
+                    !isready(released)
+                end, sample_rate))
+            take!(released)
         end
     end
     qmlfunction("play", play)
