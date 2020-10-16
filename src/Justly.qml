@@ -37,6 +37,12 @@ ApplicationWindow {
                 }
             }
             ColumnTemplate {
+                Button {
+                    text: "Compile"
+                    onClicked: {
+                        Julia.compile()
+                    }
+                }
                 StartButton {
                     model: julia_arguments.chords_model
                 }

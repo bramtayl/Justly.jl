@@ -197,7 +197,8 @@ end
 
 Open an interactive interface where you can interactively write Justly text. Once you have
 finished writing, you can copy the results to the clipboard as YAML. Then, you can use
-[`play_justly`](@ref) to play them.
+[`play_justly`](@ref) to play them. The first time a song is played, you will get delays
+while Julia compiles; press the compile button first to eliminate this.
 
 `chords` should be a vector of [`Chord`] to start editing.
 
@@ -318,6 +319,24 @@ function justly_interactive(
     end
     qmlfunction("from_yaml", from_yaml!)
 
+    compile = function ()
+        plan = justly(
+            sample_rate,
+            @view chords[1:end];
+            wave = wave,
+            max_voices = max_voices,
+            make_envelope = make_envelope,
+            initial_key = initial_key,
+            beat_duration = beat_duration,
+        )
+        schedule = AudioSchedule(takewhile(plan) do stateful_samples
+            true
+        end, sample_rate)
+        write(stream, schedule)
+        nothing
+    end
+    @qmlfunction compile
+
     play = function (index)
         key = update_key(chords, initial_key, index - 1)
         # TODO: feed channel in directly 
@@ -346,6 +365,7 @@ function justly_interactive(
         simple_yaml = "- beats: 1\n  interval: \"\"\n  notes:\n    - beats: 1\n      interval: \"\"\n  words: \"\"\n"
         observable_yaml[] = simple_yaml
         from_yaml!()
+        compile()
         # note: this is 1, 1 in julia
         press!(0, 0)
         release!()
