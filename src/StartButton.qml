@@ -1,3 +1,6 @@
-InsertButton {
-    property int index: -1
+AddButton {
+    onClicked: {
+        model.append([])
+        update_yaml()
+    }
 }

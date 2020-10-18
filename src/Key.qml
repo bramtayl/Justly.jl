@@ -1,3 +1,0 @@
-DisplayText {
-    text: "𝄞"
-}

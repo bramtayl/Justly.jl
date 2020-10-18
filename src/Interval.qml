@@ -2,16 +2,22 @@ import QtQuick 2.5
 import QtQuick.Controls 2.15
 import org.julialang 1.0
 
-RowTemplate {
+Row {
+    spacing: default_spacing
+    DisplayText {
+        text: "𝄞"
+    }
+    SmallText {
+        text: "×"
+    }
     Column {
         spacing: default_spacing / 2
         SpinBox {
             value: numerator
             from: 1
             onValueModified: {
-                numerator = value;
-                Julia.to_yaml();
-                yaml.text = julia_arguments.observable_yaml
+                numerator = value
+                update_yaml()
             }
         }
         ToolSeparator {
@@ -22,13 +28,14 @@ RowTemplate {
             value: denominator
             from: 1
             onValueModified: {
-                denominator = value;
-                Julia.to_yaml();
-                yaml.text = julia_arguments.observable_yaml
+                denominator = value
+                update_yaml()
             }
         }
     }
-    Times { }
+    SmallText {
+        text: "×"
+    }
     DisplayText {
         text: "2"
     }
@@ -36,9 +43,8 @@ RowTemplate {
         value: octave
         from: -99
         onValueModified: {
-            octave = value;
-            Julia.to_yaml();
-            yaml.text = julia_arguments.observable_yaml
+            octave = value
+            update_yaml()
         }
     }
 }

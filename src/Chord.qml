@@ -2,15 +2,19 @@ import QtQuick 2.5
 import QtQuick.Controls 2.15
 import org.julialang 1.0
 
-ColumnTemplate {
+Column {
+    spacing: default_spacing
     property int chord_index: index
-    RowTemplate {
+    Row {
+        spacing: default_spacing
         RemoveButton {
             anchors.verticalCenter: parent.verticalCenter
             model: julia_arguments.chords_model
         }
-        ColumnTemplate {
-            RowTemplate {
+        Column {
+            spacing: default_spacing
+            Row {
+                spacing: default_spacing
                 PlayButton {
                     onPressed: {
                         Julia.play(index)
@@ -20,24 +24,26 @@ ColumnTemplate {
                     text: "from"
                 }
             }
-            RowTemplate {
-                Key { }
+            Row {
+                spacing: default_spacing
+                DisplayText {
+                    text: "𝄞"
+                }
                 SmallText {
                     text: "="
                 }
-                Key { }
-                Times { }
                 Interval { }
             }
-            RowTemplate {
+            Row {
+                spacing: default_spacing
                 anchors.right: parent.right
                 DisplayText {
                     text: "⏸"
                 }
-                For { }
                 Beats { }
             }
-            RowTemplate {
+            Row {
+                spacing: default_spacing
                 SmallText {
                     text: "words:"
                 }

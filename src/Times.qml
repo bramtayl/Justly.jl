@@ -1,3 +1,0 @@
-SmallText {
-    text: "×"
-}

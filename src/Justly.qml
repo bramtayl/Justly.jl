@@ -1,23 +1,24 @@
 import QtQuick 2.15
 import QtQuick.Window 2.15
 import QtQuick.Controls 2.15
+import QtQuick.Layouts 1.15
 import org.julialang 1.0
 
 ApplicationWindow {
     visible: true
     id: window
     property int default_spacing: 12
-    property var button_size: 40
     property var large_text_size: 18
-    property var small_text_size: 12
     property var positive_color: "white"
     property var negative_color: "black"
     color: negative_color
     ScrollView {
         anchors.fill: parent
         padding: default_spacing
-        RowTemplate {
-            ColumnTemplate {
+        Row {
+            spacing: default_spacing
+            Column {
+                spacing: default_spacing
                 Button {
                     text: "Import"
                     onClicked: {
@@ -28,7 +29,6 @@ ApplicationWindow {
                 TextArea {
                     id: yaml
                     selectByMouse: true
-                    font.pointSize: small_text_size
                     background: Rectangle {
                         color: positive_color
                         border.color: yaml.focus ? "steelblue" : "transparent"
@@ -36,7 +36,8 @@ ApplicationWindow {
                     }
                 }
             }
-            ColumnTemplate {
+            Column {
+                spacing: default_spacing
                 Button {
                     text: "Compile"
                     onClicked: {
@@ -55,12 +56,15 @@ ApplicationWindow {
 
         }
         Component.onCompleted: {
-            Julia.to_yaml();
-            yaml.text = julia_arguments.observable_yaml
+            update_yaml()
         }
     }
     Timer {
         running: julia_arguments.test
         onTriggered: Qt.quit()
+    }
+    function update_yaml() {
+        Julia.to_yaml()
+        yaml.text = julia_arguments.observable_yaml
     }
 }

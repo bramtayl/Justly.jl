@@ -10,11 +10,9 @@ Button {
     }
     contentItem: ButtonText {
         text: "−"
-        color: positive_color
     }
     onClicked: {
-        model.remove(index);
-        Julia.to_yaml();
-        yaml.text = julia_arguments.observable_yaml
+        model.remove(index)
+        update_yaml()
     }
 }

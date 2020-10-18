@@ -1,6 +1,7 @@
 import QtQuick 2.15
 
 Rectangle {
-    width: button_size
-    height: button_size
+    property int side: 40
+    width: side
+    height: side
 }

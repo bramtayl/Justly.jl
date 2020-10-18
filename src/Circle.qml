@@ -1,3 +1,3 @@
 Square {
-    radius: button_size / 2
+    radius: side / 2
 }
