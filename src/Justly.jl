@@ -183,6 +183,8 @@ function update_key(chords, initial_key, chord_index)
     key
 end
 
+# TODO: continue after compilation
+
 """
     function justly_interactive(chords::Vector{Chord};
         sample_rate = 44100Hz,
@@ -198,7 +200,7 @@ end
 Open an interactive interface where you can interactively write Justly text. Once you have
 finished writing, you can copy the results to the clipboard as YAML. Then, you can use
 [`play_justly`](@ref) to play them. The first time a song is played, you will get delays
-while Julia compiles; press the compile button first to eliminate this.
+while Julia compiles.
 
 `chords` should be a vector of [`Chord`] to start editing.
 
@@ -250,44 +252,49 @@ function justly_interactive(
         "test" => test,
     )
     press! = function (chord_index, voice_index)
-        key = update_key(chords, initial_key, chord_index)
-        # make a small schedule, break it apart into pieces,
-        # and put back together but repeat the sustain while holding
-        (ramp_up, sustain, ramp_down) = map(
-            function ((stateful, start, duration),)
-                stateful, round(Int, duration * sample_rate)
-            end,
-            triples(
-                sample_rate,
-                Map(
-                    Scale(1 / max_voices),
+        @spawn begin
+            key = update_key(chords, initial_key, chord_index)
+            # make a small schedule, break it apart into pieces,
+            # and put back together but repeat the sustain while holding
+            (ramp_up, sustain, ramp_down) = map(
+                function ((stateful, start, duration),)
+                    stateful, round(Int, duration * sample_rate)
+                end,
+                triples(
+                    sample_rate,
                     Map(
-                        wave,
-                        Cycles(
-                            key *
-                            interval_beats(chords[chord_index + 1].notes[voice_index + 1])[1],
+                        Scale(1 / max_voices),
+                        Map(
+                            wave,
+                            Cycles(
+                                key *
+                                interval_beats(chords[chord_index + 1].notes[voice_index + 1])[1],
+                            ),
                         ),
                     ),
+                    0s,
+                    0,
+                    Line => ramp,
+                    1,
+                    Line => ramp,
+                    1,
+                    Line => ramp,
+                    0,
                 ),
-                0s,
-                0,
-                Line => ramp,
-                1,
-                Line => ramp,
-                1,
-                Line => ramp,
-                0,
-            ),
-        )
-        @spawn lock(speaker) do
-            write(stream, AudioSchedule(Channel{Tuple{Any, Int}}(0) do channel
-                    put!(channel, ramp_up)
-                    while !isready(released)
-                        put!(channel, sustain)
-                    end
-                    take!(released)
-                    put!(channel, ramp_down)
-                end, sample_rate))
+            )
+            intermediate = Channel{Tuple{Any, Int}}(0)
+            @async lock(speaker) do
+                write(stream, AudioSchedule(intermediate, sample_rate))
+            end
+            @async begin
+                put!(intermediate, ramp_up)
+                while true
+                    put!(intermediate, sustain)
+                end
+            end
+            take!(released)
+            put!(intermediate, ramp_down)
+            close(intermediate)
         end
     end
     qmlfunction("press", press!)
@@ -319,41 +326,28 @@ function justly_interactive(
     end
     qmlfunction("from_yaml", from_yaml!)
 
-    compile = function ()
-        plan = justly(
-            sample_rate,
-            @view chords[1:end];
-            wave = wave,
-            max_voices = max_voices,
-            make_envelope = make_envelope,
-            initial_key = initial_key,
-            beat_duration = beat_duration,
-        )
-        schedule = AudioSchedule(takewhile(plan) do stateful_samples
-            true
-        end, sample_rate)
-        write(stream, schedule)
-        nothing
-    end
-    @qmlfunction compile
-
     play = function (index)
-        key = update_key(chords, initial_key, index - 1)
-        # TODO: feed channel in directly 
-        plan = justly(
-            sample_rate,
-            @view chords[(index + 1):end];
-            wave = wave,
-            max_voices = max_voices,
-            make_envelope = make_envelope,
-            initial_key = key,
-            beat_duration = beat_duration,
-        )
-        @spawn lock(speaker) do
-            write(stream, AudioSchedule(takewhile(plan) do stateful_samples
-                    !isready(released)
-                end, sample_rate))
+        @spawn begin
+            key = update_key(chords, initial_key, index - 1)
+            # TODO: feed channel in directly 
+            plan = justly(
+                sample_rate,
+                @view chords[(index + 1):end];
+                wave = wave,
+                max_voices = max_voices,
+                make_envelope = make_envelope,
+                initial_key = key,
+                beat_duration = beat_duration
+            )
+            intermediate = Channel{Tuple{Any, Int}}(0)
+            @async for stateful_samples in plan
+                put!(intermediate, stateful_samples)
+            end
+            @async lock(speaker) do
+                write(stream, AudioSchedule(intermediate, sample_rate))
+            end
             take!(released)
+            close(intermediate)
         end
     end
     qmlfunction("play", play)
@@ -365,7 +359,6 @@ function justly_interactive(
         simple_yaml = "- beats: 1\n  interval: \"\"\n  notes:\n    - beats: 1\n      interval: \"\"\n  words: \"\"\n"
         observable_yaml[] = simple_yaml
         from_yaml!()
-        compile()
         # note: this is 1, 1 in julia
         press!(0, 0)
         release!()
@@ -390,7 +383,7 @@ function play!(
     wave,
     max_voices,
     make_envelope,
-    beat_duration,
+    beat_duration
 )
     modulation, ahead = interval_beats(chord)
     key = key * modulation
@@ -502,7 +495,7 @@ function justly(
     max_voices = 6,
     make_envelope = pedal,
     initial_key = 440Hz,
-    beat_duration = 1s,
+    beat_duration = 1s
 )
     clock = 0s
     key = initial_key

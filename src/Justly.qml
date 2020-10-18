@@ -12,51 +12,46 @@ ApplicationWindow {
     property var positive_color: "white"
     property var negative_color: "black"
     color: negative_color
-    ScrollView {
-        anchors.fill: parent
-        padding: default_spacing
-        Row {
-            spacing: default_spacing
-            Column {
-                spacing: default_spacing
-                Button {
-                    text: "Import"
-                    onClicked: {
-                        julia_arguments.observable_yaml = yaml.text
-                        Julia.from_yaml()
-                    }
+    RowLayout {
+        width: parent.width - default_spacing
+        height: parent.height - default_spacing - default_spacing
+        anchors.verticalCenter: parent.verticalCenter
+        anchors.right: parent.right
+        spacing: default_spacing
+        ColumnLayout {
+            height: parent.height
+            Button {
+                text: "Import"
+                onClicked: {
+                    julia_arguments.observable_yaml = yaml.text
+                    Julia.from_yaml()
                 }
+            }
+            ScrollView {
+                Layout.fillHeight: true
                 TextArea {
                     id: yaml
                     selectByMouse: true
+                    height: parent.height
                     background: Rectangle {
                         color: positive_color
-                        border.color: yaml.focus ? "steelblue" : "transparent"
-                        border.width: 2
+                    }
+                    Component.onCompleted: {
+                        update_yaml()
                     }
                 }
             }
-            Column {
-                spacing: default_spacing
-                Button {
-                    text: "Compile"
-                    onClicked: {
-                        Julia.compile()
-                    }
-                }
-                StartButton {
-                    model: julia_arguments.chords_model
-                }
-                ListTemplate {
-                    id: chords_view
-                    model: julia_arguments.chords_model
-                    delegate: Chord { }
-                }
-            }
-
         }
-        Component.onCompleted: {
-            update_yaml()
+        ListTemplate {
+            id: chords_view
+            model: julia_arguments.chords_model
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            delegate: Chord { }
+            footer: AppendButton {
+                model: julia_arguments.chords_model
+            }
+            ScrollBar.vertical: ScrollBar { }
         }
     }
     Timer {

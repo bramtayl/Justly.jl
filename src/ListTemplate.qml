@@ -5,6 +5,6 @@ ListView {
     displaced: Transition {
         NumberAnimation {properties: "x,y"}
     }
-    width: contentItem.childrenRect.width
-    height: contentItem.childrenRect.height
+    snapMode: ListView.SnapToItem
+    clip: true
 }

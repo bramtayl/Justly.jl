@@ -11,6 +11,9 @@ Button {
     onReleased: {
         Julia.release()
     }
+    onCanceled: {
+        Julia.release()
+    }
     contentItem: ButtonText {
         text: "▶️"
     }

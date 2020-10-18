@@ -4,6 +4,9 @@ import org.julialang 1.0
 
 Row {
     spacing: default_spacing
+    InsertButton {
+        model: notes_model
+    }
     Column {
         spacing: default_spacing
         RemoveButton {
@@ -30,8 +33,5 @@ Row {
             }
             Beats { }
         }
-    }
-    InsertButton {
-        model: notes_model
     }
 }
