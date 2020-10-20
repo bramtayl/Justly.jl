@@ -10,6 +10,7 @@ Row {
     SpinBox {
         value: beats
         from: -99
+        editable: true
         onValueModified: {
             beats = value
             update_yaml()

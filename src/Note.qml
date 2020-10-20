@@ -28,7 +28,7 @@ Row {
             anchors.right: parent.right
             PlayButton {
                 onPressed: {
-                    Julia.press(chord_index, index)
+                    event_id = Julia.press(chord_index, index)
                 }
             }
             Beats { }

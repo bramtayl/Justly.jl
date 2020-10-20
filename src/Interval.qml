@@ -15,6 +15,7 @@ Row {
         SpinBox {
             value: numerator
             from: 1
+            editable: true
             onValueModified: {
                 numerator = value
                 update_yaml()
@@ -27,6 +28,7 @@ Row {
         SpinBox {
             value: denominator
             from: 1
+            editable: true
             onValueModified: {
                 denominator = value
                 update_yaml()
@@ -42,6 +44,7 @@ Row {
     SpinBox {
         value: octave
         from: -99
+        editable: true
         onValueModified: {
             octave = value
             update_yaml()

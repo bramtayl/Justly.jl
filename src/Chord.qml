@@ -8,14 +8,14 @@ Column {
     property int chord_index: index
     width: chords_view.width
     InsertButton {
-        model: julia_arguments.chords_model
+        model: chords_model
     }
     RowLayout {
         width: parent.width - default_spacing
         spacing: default_spacing
         RemoveButton {
             Layout.alignment: Qt.AlignHCenter
-            model: julia_arguments.chords_model
+            model: chords_model
         }
         Column {
             id: modulation
@@ -24,7 +24,7 @@ Column {
                 spacing: default_spacing
                 PlayButton {
                     onPressed: {
-                        Julia.play(index)
+                        event_id = Julia.play(index)
                     }
                 }
                 SmallText {
@@ -58,6 +58,7 @@ Column {
                     text: words
                     onEditingFinished: {
                         words = text
+                        update_yaml()
                     }
                 }
             }

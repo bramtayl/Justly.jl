@@ -20,15 +20,16 @@ ApplicationWindow {
         spacing: default_spacing
         ColumnLayout {
             height: parent.height
+            Layout.alignment: Qt.AlignTop
             Button {
                 text: "Import"
                 onClicked: {
-                    julia_arguments.observable_yaml = yaml.text
-                    Julia.from_yaml()
+                    Julia.from_yaml(yaml.text)
                 }
             }
             ScrollView {
                 Layout.fillHeight: true
+                Layout.maximumHeight: implicitHeight
                 TextArea {
                     id: yaml
                     selectByMouse: true
@@ -44,22 +45,21 @@ ApplicationWindow {
         }
         ListTemplate {
             id: chords_view
-            model: julia_arguments.chords_model
+            model: chords_model
             Layout.fillWidth: true
             Layout.fillHeight: true
             delegate: Chord { }
             footer: AppendButton {
-                model: julia_arguments.chords_model
+                model: chords_model
             }
             ScrollBar.vertical: ScrollBar { }
         }
     }
     Timer {
-        running: julia_arguments.test
+        running: test
         onTriggered: Qt.quit()
     }
     function update_yaml() {
-        Julia.to_yaml()
-        yaml.text = julia_arguments.observable_yaml
+        yaml.text = Julia.to_yaml()
     }
 }
