@@ -17,7 +17,15 @@ However, these methods are fundamentally limited by relying on a limited method 
 Justly is not an application but a totally new way of writing down music.
 
 To run Justly, you will just need to run the Julia script in the repository.
-To begin, run `justly_interactive` to bring up an interactive dialog for entering music using Justly notation.
+To begin, run
+
+```
+using Justly
+chords = Chord[]
+edit_song(chords)
+```
+
+to bring up an interactive dialog for entering music using Justly notation.
 
 ## Instructions for using Justly:
 
@@ -68,7 +76,7 @@ Now, all the voices play for `2` beats.
 
 You can preview the pitch of any note or key in the song by clicking the play button underneath it.
 Once you are done, you can play the whole song or copy the song to your clipboard in YAML.
-You can play YAML using the `justly` function.
+You can also convert YAML (or a vector of chords) directly to an `AudioSchedule` using `make_schedule`.
 The YAML notation omits values if they are equal to defaults.
 - The default words are ""
 - The default interval is 1

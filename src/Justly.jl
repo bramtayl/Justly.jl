@@ -501,7 +501,7 @@ end
         wave = SawTooth(7)
     )
 
-Play music in Justly notation. 
+Create an `AudioSchedule` from your song.
 - `song` can be in `YAML` or a list of [`Chord`](@ref)s.
 - `beat_duration` is duration of a beat with time units (like `s`).
 - `initial_key` is initial key of your song, in frequency units (like `Hz`). 
