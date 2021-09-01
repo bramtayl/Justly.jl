@@ -149,13 +149,9 @@ mutable struct Note
     beats::Int
 end
 
-function Note(interval::Interval, beats::Int)
-    Note(interval.numerator, interval.denominator, interval.denominator, beats)
-end
-
 function Note(; interval = 1//1, beats = 1)
-    # convert strings and rationals to intervals first
     true_interval = Interval(interval)
+    # convert strings and rationals to intervals first
     Note(true_interval.numerator, true_interval.denominator, true_interval.octave, beats)
 end
 
@@ -208,7 +204,7 @@ end
 function _print(io::IO, chord::Chord, level::Int=0, ignore_level::Bool=false)
     empty = true
     interval = get_interval(chord)
-    if Rational(interval) != 1//1
+    if !isone(interval)
         _print(io, "interval" => interval, level, empty ? ignore_level : false)
         empty = false
     end
@@ -243,7 +239,7 @@ end
 
 function parse_note(dictionary::Dict)
     Note(;
-        interval = dictionary["interval"], 
+        interval = get(dictionary, "interval", 1//1), 
         beats = get(dictionary, "beats", 1)
     )
 end
@@ -252,7 +248,7 @@ end
 function parse_chord(dictionary::Dict)
     note_dictionaries = get(dictionary, "notes", Dict{Any, Any}[])
     Chord(
-        interval = dictionary["interval"],
+        interval = get(dictionary, "interval", 1//1),
         words = get(dictionary, "words", ""), 
         beats = get(dictionary, "beats", 1),
         # empty lists will come in as nothing
@@ -358,16 +354,12 @@ Their interval will show their relationship to the key.
 You can use words to as a way to keep track of your position in a song, or to make performance notes.
 For more information, see the README.
 
-```jldoctest
+```julia
 julia> using Justly
-
-julia> using QML
-
-julia> ENV["QT_QPA_PLATFORM"] = "xcb"
 
 julia> chords = Chord[];
 
-julia> edit_song(chords)
+julia> edit_song(chords; test = true)
 ```
 """
 function edit_song(chords; 
@@ -416,7 +408,7 @@ function edit_song(chords;
     )
     try
         if test
-            simple_yaml = "- notes:\n    - interval: \"2\"\n    - {}\n- {}\n"
+            simple_yaml = "- notes:\n    - interval: \"1o1\"\n    - {}\n- {}\n"
             from_yaml!(chords_model, simple_yaml)
             # note: this is 1, 1 in julia
             put!(presses, (0, 0))
