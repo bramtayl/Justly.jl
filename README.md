@@ -61,7 +61,8 @@ After 1 more beat, you multiply the key by `3/2`, so the key goes up by a fifth.
 
 You can play any note by clicking the play button underneath the note.
 You can play a song, starting with a certain chord, by clicking the play button underneath the chord.
-You can add lyrics to any chord.
+You can add lyrics, or performance notes, to any chord.
+You can set beats to 0 to overlap, or to a negative number to "travel back in time".
 You can copy the song as YAML on the left.
 You can also import YAML.
 You can convert YAML, or a vector of chords, directly to an `AudioSchedule` using `make_schedule`.

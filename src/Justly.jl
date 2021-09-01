@@ -45,8 +45,8 @@ end
 """
     pluck(duration; decay = -2.5 / s, slope = 1 / 0.005s, peak = 1)
 
-The default envelope function used for [`make_schedule`](@ref).
-An exponential decay with ramps on either side.
+You can use `pluck` to make an envelope with an exponential decay and ramps at the beginning and end.
+
 """
 function pluck(duration; decay = -2.5 / s, slope = 1 / 0.005s, peak = 1)
     ramp = peak / slope
@@ -57,7 +57,8 @@ export pluck
 """
     pedal(duration; slope = 1 / 0.1s, peak = 1, overlap = 1/2)
 
-A sustain with steep ramps on either side. Overlap is the proportion of the ramps that overlap.
+You can use `pedal` to make an envelope with a sustain and ramps at the beginning and end. 
+`overlap` is the proportion of the ramps that overlap.
 """
 function pedal(duration; slope = 1 / 0.1s, peak = 1, overlap = 1 / 2)
     ramp = peak / slope
@@ -229,9 +230,9 @@ function _print(io::IO, chord::Chord, level::Int=0, ignore_level::Bool=false)
 end
 
 # cumulative product of previous modulations
-function update_key(chords, initial_key, chord_index)
+function update_key(song, initial_key, chord_index)
     key = initial_key
-    for chord in view(chords, 1:(chord_index + 1))
+    for chord in view(song, 1:(chord_index + 1))
         key = key * Rational(get_interval(chord))
     end
     key
@@ -279,7 +280,7 @@ function from_yaml!(chords_model, text)
     nothing
 end
 
-function press!(buffer, chords, presses, releases;
+function press!(buffer, song, presses, releases;
     beat_duration = DEFAULT_BEAT_DURATION,
     initial_key = DEFAULT_INITIAL_KEY,
     make_envelope = DEFAULT_MAKE_ENVELOPE,
@@ -292,9 +293,9 @@ function press!(buffer, chords, presses, releases;
         buffer_at = 0
         if voice_index < 0
             whole_schedule = make_schedule(
-                (@view chords[(chord_index + 1):end]);
+                (@view song[(chord_index + 1):end]);
                 beat_duration = beat_duration,
-                initial_key = update_key(chords, initial_key, chord_index - 1),
+                initial_key = update_key(song, initial_key, chord_index - 1),
                 make_envelope = make_envelope,
                 sample_rate = sample_rate,
                 volume = volume,
@@ -314,8 +315,8 @@ function press!(buffer, chords, presses, releases;
                     Map(
                         wave,
                         Cycles(
-                            update_key(chords, initial_key, chord_index) *
-                            Rational(get_interval(chords[chord_index + 1].notes[voice_index + 1]))
+                            update_key(song, initial_key, chord_index) *
+                            Rational(get_interval(song[chord_index + 1].notes[voice_index + 1]))
                         ),
                     ),
                 ),
@@ -336,33 +337,26 @@ function press!(buffer, chords, presses, releases;
 end
 
 """
-    function edit_song(chords::Vector{Chord}; ramp = 0.1s, options...)
+    function edit_song(song; ramp = 0.1s, options...)
 
-Open an interactive interface where you can interactively write Justly text. 
-Once you have finished writing, you can copy the results to the clipboard as YAML.
-Then, you can use [`make_schedule`](@ref) to play your song.
-Might be slow at first while Julia is compiling.
+You can use `edit` song to edit songs interactively. 
+The interface might be slow at first while Julia is compiling.
 
-`chords` should be a vector of [`Chord`]s to start editing.
-`ramp` is the time it takes for a note to switch from on to off, in time units (like `s`).
-`options` will be passed to [`make_schedule`](@ref).
+- `song` is YAML or a vector of [`Chord`]s.
+- `ramp` is the onset/offset time, in time units (like `s`).
+- `options` will be passed to [`make_schedule`](@ref).
 
-The first interval in the chord will modulate the key, and tells how many beats before the next key change.
-You can set beats to 0 to overlap, or to a negative number to "travel back in time".
-The rest of the intervals in the chord will play notes with a given duration.
-Their interval will show their relationship to the key.
-You can use words to as a way to keep track of your position in a song, or to make performance notes.
-For more information, see the README.
+For more information, see the `README`.
 
 ```julia
 julia> using Justly
 
-julia> chords = Chord[];
+julia> song = Chord[];
 
-julia> edit_song(chords; test = true)
+julia> edit_song(song; test = true)
 ```
 """
-function edit_song(chords; 
+function edit_song(song;
     beat_duration = DEFAULT_BEAT_DURATION,
     initial_key = DEFAULT_INITIAL_KEY,
     make_envelope = DEFAULT_MAKE_ENVELOPE,
@@ -375,11 +369,11 @@ function edit_song(chords;
     if nthreads() < 2
         error("Justly needs at least 2 threads to function")
     end
-    qmlfunction("to_yaml", let chords = chords
-        () -> YAML.write(chords)
+    qmlfunction("to_yaml", let song = song
+        () -> YAML.write(song)
     end)
 
-    chords_model = ListModel(chords)
+    chords_model = ListModel(song)
     qmlfunction("from_yaml", let chords_model = chords_model
         text -> from_yaml!(chords_model, text)
     end)
@@ -397,7 +391,7 @@ function edit_song(chords;
     loadqml(joinpath(@__DIR__, "Justly.qml"), chords_model = chords_model, test = test)
     stream = PortAudioStream(0, 1, writer = Weaver(); warn_xruns = false)
     buffer = stream.sink_messanger.buffer
-    press_task = @spawn press!(buffer, chords, presses, releases;
+    press_task = @spawn press!(buffer, song, presses, releases;
         beat_duration = beat_duration,
         initial_key = initial_key,
         make_envelope = make_envelope,
@@ -415,7 +409,7 @@ function edit_song(chords;
             put!(releases, nothing)
             put!(presses, (0, -1))
             put!(releases, nothing)
-            @test String(YAML.write(chords)) == simple_yaml
+            @test String(YAML.write(song)) == simple_yaml
         end
         exec()
         close(presses)
@@ -474,13 +468,13 @@ function add_chord!(a_schedule, dictionary::Dict, clock, key; options...)
     add_chord!(a_schedule, parse_chord(dictionary), clock, key; options...)
 end
 
-function add_chord!(a_schedule, chords::Vector, clock, key;
+function add_chord!(a_schedule, song::Vector, clock, key;
     beat_duration = DEFAULT_BEAT_DURATION,
     make_envelope = DEFAULT_MAKE_ENVELOPE,
     volume = DEFAULT_VOLUME,
     wave = DEFAULT_WAVE
 )
-    for chord in chords
+    for chord in song
         key, clock = add_chord!(a_schedule, chord, clock, key;
             beat_duration = beat_duration,
             make_envelope = make_envelope,
@@ -502,13 +496,15 @@ end
     )
 
 Create an `AudioSchedule` from your song.
-- `song` can be in `YAML` or a list of [`Chord`](@ref)s.
-- `beat_duration` is duration of a beat with time units (like `s`).
+- `song` is `YAML` or a vector of [`Chord`](@ref)s.
+- `beat_duration` is the duration of a beat, with time units (like `s`).
 - `initial_key` is initial key of your song, in frequency units (like `Hz`). 
-- `make_envelope` is should be a function to make an envelope, like [`pluck`](@ref) or [`pedal`](@ref).
-- `sample_rate` is the sample rate in frequency units (like `Hz`).
-- `volume` will be the volume that a single voice is played at, ranging from 0-1.
-- `wave` should be a function which takes an angle in radians and returns an amplitude between 0 and 1. 
+- `make_envelope` is a function to make an envelope, like [`pluck`](@ref) or [`pedal`](@ref).
+- `sample_rate` is the sample rate, in frequency units (like `Hz`).
+- `volume`, ranging from 0-1, is the volume that a single voice is played at.
+- `wave` is a function which takes an angle in radians and returns an amplitude between -1 and 1.
+
+For more information, see the `README`.
 
 For example, to create a simple I-IV-I figure,
 
@@ -528,7 +524,7 @@ julia> make_schedule(load(\"""
               notes:
                 - interval: "3/2"
                 - interval: "5/4o1"
-                - interval: "1o2"
+                - interval: "o2"
             - words: "I"
               interval: "3/2"
               notes:
@@ -540,7 +536,7 @@ julia> make_schedule(load(\"""
 1.85 s 44100.0 Hz AudioSchedule
 ```
 
-Note also that Justly will unnest top-level lists, so you use YAML anchors to repeat themes.
+Top-level lists will be unnested, so you use YAML anchors to repeat themes.
 
 ```jldoctest make_schedule
 julia> make_schedule(load(\"""
