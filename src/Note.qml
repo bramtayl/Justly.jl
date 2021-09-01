@@ -3,32 +3,34 @@ import QtQuick.Controls 2.15
 import org.julialang 1.0
 
 Row {
-    spacing: default_spacing
-    InsertButton {
-        model: notes_model
+    Button {
+        text: "+"
+        onClicked: {
+            notes_model.insert(index, [])
+            yaml.text = Julia.to_yaml()
+        }
     }
     Column {
-        spacing: default_spacing
-        RemoveButton {
+        Button {
             anchors.horizontalCenter: parent.horizontalCenter
-            model: notes_model
-        }
-        Row {
-            spacing: default_spacing
-            DisplayText {
-                text: "𝄞"
+            text: "−"
+            onClicked: {
+                notes_model.remove(index)
+                yaml.text = Julia.to_yaml()
             }
-            SmallText {
-                text: "×"
-            }
-            Interval {}
         }
+        Interval {}
         Row {
-            spacing: default_spacing
-            anchors.right: parent.right
-            PlayButton {
+            Button {
+                text: "▶️"
                 onPressed: {
-                    event_id = Julia.press(chord_index, index)
+                    Julia.press(chord_index, index)
+                }
+                onCanceled: {
+                    Julia.release()
+                }
+                onReleased: {
+                    Julia.release()
                 }
             }
             Beats { }

@@ -4,81 +4,75 @@ import QtQuick.Layouts 1.15
 import org.julialang 1.0
 
 Column {
-    spacing: default_spacing
     property int chord_index: index
     width: chords_view.width
-    InsertButton {
-        model: chords_model
+    Button {
+        text: "+"
+        onClicked: {
+            chords_model.insert(index, [])
+            yaml.text = Julia.to_yaml()
+        }
     }
     RowLayout {
-        width: parent.width - default_spacing
-        spacing: default_spacing
-        RemoveButton {
-            Layout.alignment: Qt.AlignHCenter
-            model: chords_model
+        width: parent.width
+        Button {
+            text: "−"
+            onClicked: {
+                chords_model.remove(index)
+                yaml.text = Julia.to_yaml()
+            }
         }
         Column {
             id: modulation
-            spacing: default_spacing
-            Row {
-                spacing: default_spacing
-                PlayButton {
-                    onPressed: {
-                        event_id = Julia.play(index)
-                    }
-                }
-                SmallText {
-                    text: "from"
+            TextField {
+                text: words
+                onEditingFinished: {
+                    words = text
+                    yaml.text = Julia.to_yaml()
                 }
             }
             Row {
-                spacing: default_spacing
-                DisplayText {
-                    text: "𝄞"
-                }
-                SmallText {
-                    text: "="
+                Text {
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: "key = "
                 }
                 Interval { }
             }
             Row {
-                spacing: default_spacing
-                anchors.right: parent.right
-                DisplayText {
-                    text: "⏸"
+                Button {
+                    text: "▶️"
+                    onPressed: {
+                        Julia.press(index, -1)
+                    }
+                    onReleased: {
+                        Julia.release()
+                    }
+                    onCanceled: {
+                        Julia.release()
+                    }
                 }
                 Beats { }
             }
-            Row {
-                spacing: default_spacing
-                SmallText {
-                    text: "words:"
-                }
-                TextField {
-                    text: words
-                    onEditingFinished: {
-                        words = text
-                        update_yaml()
-                    }
-                }
-            }
         }
         ToolSeparator {
-            orientation: Qt.Vertical
-            Layout.alignment: Qt.AlignTop
             implicitHeight: modulation.height
         }
-        ListTemplate {
+        ListView {
             Layout.fillWidth: true
-            Layout.alignment: Qt.AlignTop
-            height: modulation.height
+            // notes are slightly taller than modulations
+            height: modulation.height + 15
             orientation: ListView.Horizontal
             model: notes_model
             delegate: Note { }
-            footer: AppendButton {
-                model: notes_model
+            footer: Button {
+                text: "+"
+                onClicked: {
+                    notes_model.append([])
+                    yaml.text = Julia.to_yaml()
+                }
             }
-            ScrollBar.horizontal: ScrollBar { }
+            snapMode: ListView.SnapToItem
+            clip: true
         }
     }
 }

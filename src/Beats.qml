@@ -3,17 +3,17 @@ import QtQuick.Controls 2.15
 import org.julialang 1.0
 
 Row {
-    spacing: default_spacing
-    SmallText {
+    Text {
+        anchors.verticalCenter: parent.verticalCenter
         text: "for"
     }
     SpinBox {
-        value: beats
-        from: -99
         editable: true
+        from: -99
+        value: beats
         onValueModified: {
             beats = value
-            update_yaml()
+            yaml.text = Julia.to_yaml()
         }
     }
 }

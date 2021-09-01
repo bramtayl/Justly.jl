@@ -7,17 +7,9 @@ import org.julialang 1.0
 ApplicationWindow {
     visible: true
     id: window
-    property int default_spacing: 12
-    property var large_text_size: 18
-    property var positive_color: "white"
-    property var negative_color: "black"
-    color: negative_color
     RowLayout {
-        width: parent.width - default_spacing
-        height: parent.height - default_spacing - default_spacing
-        anchors.verticalCenter: parent.verticalCenter
-        anchors.right: parent.right
-        spacing: default_spacing
+        height: parent.height
+        width: parent.width
         ColumnLayout {
             height: parent.height
             Layout.alignment: Qt.AlignTop
@@ -32,34 +24,33 @@ ApplicationWindow {
                 Layout.maximumHeight: implicitHeight
                 TextArea {
                     id: yaml
-                    selectByMouse: true
                     height: parent.height
-                    background: Rectangle {
-                        color: positive_color
-                    }
+                    selectByMouse: true
                     Component.onCompleted: {
-                        update_yaml()
+                        yaml.text = Julia.to_yaml()
                     }
                 }
             }
         }
-        ListTemplate {
+        ListView {
             id: chords_view
-            model: chords_model
-            Layout.fillWidth: true
+            clip: true
             Layout.fillHeight: true
+            Layout.fillWidth: true
+            model: chords_model
+            snapMode: ListView.SnapToItem
             delegate: Chord { }
-            footer: AppendButton {
-                model: chords_model
+            footer: Button {
+                text: "+"
+                onClicked: {
+                    chords_model.append([])
+                    yaml.text = Julia.to_yaml()
+                }
             }
-            ScrollBar.vertical: ScrollBar { }
         }
     }
     Timer {
         running: test
         onTriggered: Qt.quit()
-    }
-    function update_yaml() {
-        yaml.text = Julia.to_yaml()
     }
 }

@@ -5,19 +5,19 @@ version = "0.0.1"
 
 [deps]
 AudioSchedules = "0990df78-ca1d-4d03-ab92-318744ee3999"
-Observables = "510215fc-4207-5dde-b226-833fc4488ee2"
 PortAudio = "80ea8bcb-4634-5cb3-8ee8-a132660d1d2d"
 QML = "2db162a6-7e43-52c3-8d84-290c1c42d82a"
+Qt5QuickControls_jll = "e4aecf45-a397-53cc-864f-87db395e0248"
 SampledSignals = "bd7594eb-a658-542f-9e75-4c4d8908c167"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
 YAML = "ddb6d928-2868-570f-bddf-ab3f9cf99eb6"
 
 [compat]
-AudioSchedules = "0.1, 0.2"
-Observables = "0.3"
+AudioSchedules = "0.3"
 PortAudio = "1.1"
-QML = "0.5,0.6"
+QML = "0.7"
+Qt5QuickControls_jll = "5.15"
 SampledSignals = "2.1"
 Unitful = "0.17,1.4"
 YAML = "0.4"

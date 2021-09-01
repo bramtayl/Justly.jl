@@ -3,22 +3,18 @@ import QtQuick.Controls 2.15
 import org.julialang 1.0
 
 Row {
-    spacing: default_spacing
-    DisplayText {
-        text: "𝄞"
-    }
-    SmallText {
-        text: "×"
+    Text {
+        anchors.verticalCenter: parent.verticalCenter
+        text: "key × "
     }
     Column {
-        spacing: default_spacing / 2
         SpinBox {
-            value: numerator
-            from: 1
             editable: true
+            from: 1
+            value: numerator
             onValueModified: {
                 numerator = value
-                update_yaml()
+                yaml.text = Julia.to_yaml()
             }
         }
         ToolSeparator {
@@ -26,28 +22,26 @@ Row {
             width: parent.width
         }
         SpinBox {
-            value: denominator
             from: 1
+            value: denominator
             editable: true
             onValueModified: {
                 denominator = value
-                update_yaml()
+                yaml.text = Julia.to_yaml()
             }
         }
     }
-    SmallText {
-        text: "×"
-    }
-    DisplayText {
-        text: "2"
+    Text {
+        anchors.verticalCenter: parent.verticalCenter
+        text: " × 2 "
     }
     SpinBox {
-        value: octave
-        from: -99
         editable: true
+        from: -99
+        value: octave
         onValueModified: {
             octave = value
-            update_yaml()
+            yaml.text = Julia.to_yaml()
         }
     }
 }
