@@ -14,17 +14,16 @@ using AudioSchedules:
     Weaver,
     write_stateful!,
     write_buffer
-import Base: Rational, show
+import Base: isone, Rational, show
 using Base.Threads: nthreads, @spawn
 using PortAudio: PortAudioStream
 using QML:
     exec,
     ListModel,
     loadqml,
-    # To avoid QML bug
+    # to avoid QML bug
     QML,
     qmlfunction
-using Qt5QuickControls_jll: Qt5QuickControls_jll
 using Qt5QuickControls2_jll: Qt5QuickControls2_jll
 using SampledSignals: samplerate
 using Test: @test
@@ -46,8 +45,8 @@ end
 """
     pluck(duration; decay = -2.5 / s, slope = 1 / 0.005s, peak = 1)
 
-The default envelope function used for [`make_schedule`](@ref). An exponential decay
-with steep ramps on either side.
+The default envelope function used for [`make_schedule`](@ref).
+An exponential decay with ramps on either side.
 """
 function pluck(duration; decay = -2.5 / s, slope = 1 / 0.005s, peak = 1)
     ramp = peak / slope
@@ -58,8 +57,7 @@ export pluck
 """
     pedal(duration; slope = 1 / 0.1s, peak = 1, overlap = 1/2)
 
-A sustain with steep ramps on either side. Overlap is the proportion of the ramps that
-overlap.
+A sustain with steep ramps on either side. Overlap is the proportion of the ramps that overlap.
 """
 function pedal(duration; slope = 1 / 0.1s, peak = 1, overlap = 1 / 2)
     ramp = peak / slope
@@ -77,9 +75,8 @@ export pedal
 
 const DEFAULT_BEAT_DURATION = 0.6s
 const DEFAULT_INITIAL_KEY = 220Hz
-const DEFAULT_LATENCY = 1.0ms
 const DEFAULT_MAKE_ENVELOPE = pedal
-const DEFAULT_VOLUME = 1/6
+const DEFAULT_VOLUME = 0.15
 const DEFAULT_RAMP = 0.1s
 const DEFAULT_SAMPLE_RATE = 44100Hz
 const DEFAULT_WAVE = SawTooth(7)
@@ -92,6 +89,8 @@ struct Interval
     denominator::Int
     octave::Int
 end
+
+isone(interval::Interval) = interval.numerator == 1 && interval.denominator == 1 && interval.octave == 0
 
 function Rational(interval::Interval)
     interval.numerator // interval.denominator * (2 // 1)^interval.octave
@@ -190,26 +189,46 @@ end
 # overload the yaml print functions
 # print them as if they were dicts
 function _print(io::IO, note::Note, level::Int=0, ignore_level::Bool=false)
-    _print(io, "interval" => get_interval(note), level, ignore_level)
+    empty = true
+    interval = get_interval(note)
+    if !isone(interval)
+        _print(io, "interval" => interval, level, empty ? ignore_level : false)
+        empty = false
+    end
     beats = note.beats
-    if beats != 1
-        _print(io, "beats" => beats, level, true)
+    if !isone(beats)
+        _print(io, "beats" => beats, level, empty ? ignore_level : false)
+        empty = false
+    end
+    if empty
+        println(io, "{}")
     end
 end
 
 function _print(io::IO, chord::Chord, level::Int=0, ignore_level::Bool=false)
-    _print(io, "interval" => get_interval(chord), level, ignore_level)
+    empty = true
+    interval = get_interval(chord)
+    if Rational(interval) != 1//1
+        _print(io, "interval" => interval, level, empty ? ignore_level : false)
+        empty = false
+    end
     words = chord.words
     if !isempty(words)
-        _print(io, "words" => words, level, true)
-    end
-    notes = chord.notes
-    if !isempty(notes)
-        _print(io, "notes" => notes, level, true)
+        _print(io, "words" => words, level, empty ? ignore_level : false)
+        empty = false
     end
     beats = chord.beats
     if beats != 1
-        _print(io, "beats" => beats, level, true)
+        _print(io, "beats" => beats, level, empty ? ignore_level : false)
+        empty = false
+    end
+    notes = chord.notes
+    if !isempty(notes)
+        _print(io, "notes" => notes, level, empty ? ignore_level : false)
+        empty = false
+    end
+    if empty
+        println(io, "{}")
     end
 end
 
@@ -222,8 +241,6 @@ function update_key(chords, initial_key, chord_index)
     key
 end
 
-# TODO: continue after compilation
-
 function parse_note(dictionary::Dict)
     Note(;
         interval = dictionary["interval"], 
@@ -231,6 +248,7 @@ function parse_note(dictionary::Dict)
     )
 end
 
+# TODO: add a special constructor to avoid Dict intermediates
 function parse_chord(dictionary::Dict)
     note_dictionaries = get(dictionary, "notes", Dict{Any, Any}[])
     Chord(
@@ -247,7 +265,6 @@ function parse_chord(dictionary::Dict)
 end
 
 # we are working with the model, not the underlying data, so qt can know what we're doing
-# TODO: add a special constructor to avoid Dict intermediates
 function from_yaml!(chords_model, text)
     try
         # load first to catch errors early
@@ -266,37 +283,7 @@ function from_yaml!(chords_model, text)
     nothing
 end
 
-function check_closed(an_error)
-    if !(an_error isa InvalidStateException && an_error.state === :closed)
-        rethrow(an_error)
-    end
-end
-
-function produce!(intermediate, ramp_up, sustain)
-    try
-        put!(intermediate, ramp_up)
-        while true
-            put!(intermediate, sustain)
-        end
-    catch an_error
-        check_closed(an_error)
-    end
-end
-
-function produce!(intermediate, whole_schedule)
-    try
-        foreach(
-            let intermediate = intermediate
-                stateful_sample -> put!(intermediate, stateful_samples)
-            end,
-            whole_schedule
-        )
-    catch an_error
-        check_closed(an_error)
-    end
-end
-
-function press!(buffer, chords, press_inputs, release_channel;
+function press!(buffer, chords, presses, releases;
     beat_duration = DEFAULT_BEAT_DURATION,
     initial_key = DEFAULT_INITIAL_KEY,
     make_envelope = DEFAULT_MAKE_ENVELOPE,
@@ -305,7 +292,7 @@ function press!(buffer, chords, press_inputs, release_channel;
     volume = DEFAULT_VOLUME,
     wave = DEFAULT_WAVE
 )
-    for (chord_index, voice_index) in press_inputs
+    for (chord_index, voice_index) in presses
         buffer_at = 0
         if voice_index < 0
             whole_schedule = make_schedule(
@@ -318,7 +305,7 @@ function press!(buffer, chords, press_inputs, release_channel;
                 wave = wave
             )
             for (stateful, stateful_to) in whole_schedule
-                if isready(release_channel)
+                if isready(releases)
                     break
                 end
                 buffer_at = write_stateful!(stateful, stateful_to, buffer, buffer_at)
@@ -342,45 +329,39 @@ function press!(buffer, chords, press_inputs, release_channel;
             # all three will be pairs of iterators and number of frames
             (ramp_up, sustain, ramp_down) = dummy_schedule
             buffer_at = write_stateful!(ramp_up..., buffer, buffer_at)
-            while !isready(release_channel)
+            while !isready(releases)
                 buffer_at = write_stateful!(sustain..., buffer, buffer_at)
             end
             buffer_at = write_stateful!(ramp_down..., buffer, buffer_at)
         end
         write_buffer(buffer, buffer_at)
-        take!(release_channel)
+        take!(releases)
     end
 end
 
 """
-    function edit_song(chords::Vector{Chord};
-        beat_duration = 0.6s,
-        initial_key = 220Hz,
-        make_envelope = pedal,
-        ramp = 0.1s,
-        sample_rate = 44100Hz,
-        volume = 1/6,
-        wave = SawTooth(7),
-        test = false
-    )
+    function edit_song(chords::Vector{Chord}; ramp = 0.1s, options...)
 
-Open an interactive interface where you can interactively write Justly text. Once you have
-finished writing, you can copy the results to the clipboard as YAML. Then, you can use
-[`play_justly`](@ref) to play them. The first time a song is played, you will get delays
-while Julia compiles.
+Open an interactive interface where you can interactively write Justly text. 
+Once you have finished writing, you can copy the results to the clipboard as YAML.
+Then, you can use [`make_schedule`](@ref) to play your song.
+Might be slow at first while Julia is compiling.
 
-`chords` should be a vector of [`Chord`]s to start editing. 
-play_options should be a set of [`PlayOptions`](@ref).
+`chords` should be a vector of [`Chord`]s to start editing.
+`ramp` is the time it takes for a note to switch from on to off, in time units (like `s`).
+`options` will be passed to [`make_schedule`](@ref).
 
-The first interval in the chord will modulate the key, and tells how many beats before the
-next chord. You can set beats to 0 to overlap, or to a negative number to "time-travel" back
-in time. The rest of the intervals in the chord will play notes with a given duration. Their
-interval will show their relationship to the key. You can use words to as a way to
-keep track of your position in a song, or to make performance notes, but they are optional.
+The first interval in the chord will modulate the key, and tells how many beats before the next key change.
+You can set beats to 0 to overlap, or to a negative number to "travel back in time".
+The rest of the intervals in the chord will play notes with a given duration.
+Their interval will show their relationship to the key.
+You can use words to as a way to keep track of your position in a song, or to make performance notes.
 For more information, see the README.
 
 ```jldoctest
 julia> using Justly
+
+julia> using QML
 
 julia> ENV["QT_QPA_PLATFORM"] = "xcb"
 
@@ -411,49 +392,47 @@ function edit_song(chords;
         text -> from_yaml!(chords_model, text)
     end)
 
-    press_inputs = Channel{Tuple{Int, Int}}(0)
-    qmlfunction("press", let press_inputs = press_inputs
-        (chord_index, voice_index) -> put!(press_inputs, (chord_index, voice_index))
+    presses = Channel{Tuple{Int, Int}}(0)
+    qmlfunction("press", let presses = presses
+        (chord_index, voice_index) -> put!(presses, (chord_index, voice_index))
     end)
 
-    release_channel = Channel{Nothing}(0)
-    # wait for an async task to finish and take the release
-    qmlfunction("release", let release_channel = release_channel
-        () -> put!(release_channel, nothing)
+    releases = Channel{Nothing}(0)
+    qmlfunction("release", let releases = releases
+        () -> put!(releases, nothing)
     end)
+
     loadqml(joinpath(@__DIR__, "Justly.qml"), chords_model = chords_model, test = test)
     stream = PortAudioStream(0, 1, writer = Weaver(); warn_xruns = false)
+    buffer = stream.sink_messanger.buffer
+    press_task = @spawn press!(buffer, chords, presses, releases;
+        beat_duration = beat_duration,
+        initial_key = initial_key,
+        make_envelope = make_envelope,
+        ramp = ramp,
+        sample_rate = sample_rate,
+        volume = volume,
+        wave = wave
+    )
     try
-        @sync begin
-            buffer = stream.sink_messanger.buffer
-            # put the indexes into the channel
-            # then wait for them to be taken by the async tasks
-            # pause the async tasks with the inputs
-            bind(release_channel, @spawn press!(buffer, chords, press_inputs, release_channel;
-                beat_duration = beat_duration,
-                initial_key = initial_key,
-                make_envelope = make_envelope,
-                ramp = ramp,
-                sample_rate = sample_rate,
-                volume = volume,
-                wave = wave
-            ))
-            if test
-                simple_yaml = "- beats: 1\n  interval: \"\"\n  notes:\n    - beats: 1\n      interval: \"\"\n  words: \"\"\n"
-                from_yaml!(chords_model, simple_yaml)
-                # note: this is 1, 1 in julia
-                put!(press_inputs, (0, 0))
-                put!(release_channel, nothing)
-                put!(play_inputs, 0)
-                put!(release_channel, nothing)
-                @test String(YAML.write(chords)) == simple_yaml
-            end
-            exec()
-            close(press_inputs)
+        if test
+            simple_yaml = "- notes:\n    - interval: \"2\"\n    - {}\n- {}\n"
+            from_yaml!(chords_model, simple_yaml)
+            # note: this is 1, 1 in julia
+            put!(presses, (0, 0))
+            put!(releases, nothing)
+            put!(presses, (0, -1))
+            put!(releases, nothing)
+            @test String(YAML.write(chords)) == simple_yaml
         end
+        exec()
+        close(presses)
     finally
-        close(stream)
+        wait(press_task)
     end
+    close(releases)
+    close(stream)
+    nothing
 end
 export edit_song
 
@@ -526,77 +505,57 @@ end
         initial_key = 220Hz,
         make_envelope = pedal,
         sample_rate = 44100Hz,
-        volume = 1/6,
+        volume = 0.15,
         wave = SawTooth(7)
     )
 
 Play music in Justly notation. 
-`song` can be read in using `YAML` generated with [`edit_song`](@ref). 
-`wave` should be a function which takes an angle in radians and returns and amplitude between 0 and 1. 
-To avoid peaking, do not exceed `volume` playing at once.
-`make_envelope` should be a function that takes a duration in units of time (like `s`) and returns a tuple of envelope segments that can be splatted into `AudioSchedules.add!`. 
-`initial_key` should the frequency of the initial key for your song, in units of frequency (like `Hz`). 
-`beat_duration` should specify the amount of duration of a beat with units of time (like `s`).
+- `song` can be in `YAML` or a list of [`Chord`](@ref)s.
+- `beat_duration` is duration of a beat with time units (like `s`).
+- `initial_key` is initial key of your song, in frequency units (like `Hz`). 
+- `make_envelope` is should be a function to make an envelope, like [`pluck`](@ref) or [`pedal`](@ref).
+- `sample_rate` is the sample rate in frequency units (like `Hz`).
+- `volume` will be the volume that a single voice is played at, ranging from 0-1.
+- `wave` should be a function which takes an angle in radians and returns an amplitude between 0 and 1. 
 
 For example, to create a simple I-IV-I figure,
 
 ```jldoctest make_schedule
-julia> using Main.Justly
+julia> using Justly
 
 julia> using YAML: load
 
-julia> using Unitful: Hz
-
 julia> make_schedule(load(\"""
             - words: "I"
-              interval: "1"
-              beats: 1
               notes:
-                - beats: 1
-                  interval: "1"
-                - beats: 1
-                  interval: "3/2"
-                - beats: 1
-                  interval: "5/4o1"     
+                - {}
+                - interval: "3/2"
+                - interval: "5/4o1"     
             - words: "IV"
               interval: "2/3"
-              beats: 1
               notes:
-                - beats: 1
-                  interval: "3/2"
-                - beats: 1
-                  interval: "5/4o1"
-                - beats: 1
-                  interval: "1o2"
+                - interval: "3/2"
+                - interval: "5/4o1"
+                - interval: "1o2"
             - words: "I"
               interval: "3/2"
-              beats: 1
               notes:
-                - beats: 1
-                  interval: "1"
-                - beats: 1
-                  interval: "3/2"
-                - beats: 1
-                  interval: "5/4o1"
+                - {}
+                - interval: "3/2"
+                - interval: "5/4o1"
               
          \"""))
 1.85 s 44100.0 Hz AudioSchedule
 ```
 
-Note also that top-level lists will be unnested, allowing for
-repetition using YAML anchors. 
+Note also that Justly will unnest top-level lists, so you use YAML anchors to repeat themes.
 
 ```jldoctest make_schedule
 julia> make_schedule(load(\"""
             - &fifth
-                - words: ""
-                  interval: "1"
-                  beats: 1
-                  notes:
-                    - beats: 1
-                      interval: "1"
-                    - beats: 1
-                      interval: "3/2"
+                - notes:
+                    - {}
+                    - interval: "3/2"
             - *fifth
         \"""))
 1.25 s 44100.0 Hz AudioSchedule

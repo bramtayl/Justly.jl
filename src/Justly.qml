@@ -7,6 +7,12 @@ import org.julialang 1.0
 ApplicationWindow {
     visible: true
     id: window
+    color: "white"
+    property int button_side: 40
+    property int button_text_size: 16
+    property int default_spacing: 5
+    property string add_text: "+"
+    property string remove_text: "−"
     RowLayout {
         height: parent.height
         width: parent.width
@@ -14,7 +20,10 @@ ApplicationWindow {
             height: parent.height
             Layout.alignment: Qt.AlignTop
             Button {
-                text: "Import"
+                text: "↓"
+                font.pointSize: button_text_size
+                implicitHeight: button_side
+                implicitWidth: button_side
                 onClicked: {
                     Julia.from_yaml(yaml.text)
                 }
@@ -41,7 +50,10 @@ ApplicationWindow {
             snapMode: ListView.SnapToItem
             delegate: Chord { }
             footer: Button {
-                text: "+"
+                implicitWidth: button_side
+                implicitHeight: button_side
+                text: add_text
+                font.pointSize: button_text_size
                 onClicked: {
                     chords_model.append([])
                     yaml.text = Julia.to_yaml()

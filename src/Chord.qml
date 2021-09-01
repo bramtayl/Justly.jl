@@ -7,7 +7,10 @@ Column {
     property int chord_index: index
     width: chords_view.width
     Button {
-        text: "+"
+        font.pointSize: button_text_size
+        implicitWidth: button_side
+        implicitHeight: button_side
+        text: add_text
         onClicked: {
             chords_model.insert(index, [])
             yaml.text = Julia.to_yaml()
@@ -16,7 +19,10 @@ Column {
     RowLayout {
         width: parent.width
         Button {
-            text: "−"
+            font.pointSize: button_text_size
+            text: remove_text
+            implicitWidth: button_side
+            implicitHeight: button_side
             onClicked: {
                 chords_model.remove(index)
                 yaml.text = Julia.to_yaml()
@@ -24,6 +30,7 @@ Column {
         }
         Column {
             id: modulation
+            spacing: default_spacing
             TextField {
                 text: words
                 onEditingFinished: {
@@ -40,6 +47,9 @@ Column {
             }
             Row {
                 Button {
+                    font.pointSize: button_text_size
+                    implicitWidth: button_side
+                    implicitHeight: button_side
                     text: "▶️"
                     onPressed: {
                         Julia.press(index, -1)
@@ -55,17 +65,21 @@ Column {
             }
         }
         ToolSeparator {
-            implicitHeight: modulation.height
+            implicitHeight: parent.height
         }
         ListView {
+            id: notes
             Layout.fillWidth: true
             // notes are slightly taller than modulations
-            height: modulation.height + 15
+            implicitHeight: contentItem.childrenRect.height
             orientation: ListView.Horizontal
             model: notes_model
             delegate: Note { }
             footer: Button {
-                text: "+"
+                implicitWidth: button_side
+                implicitHeight: button_side
+                font.pointSize: button_text_size
+                text: add_text
                 onClicked: {
                     notes_model.append([])
                     yaml.text = Julia.to_yaml()

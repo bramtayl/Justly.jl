@@ -5,7 +5,7 @@ import org.julialang 1.0
 Row {
     Text {
         anchors.verticalCenter: parent.verticalCenter
-        text: "for"
+        text: " for "
     }
     SpinBox {
         editable: true
