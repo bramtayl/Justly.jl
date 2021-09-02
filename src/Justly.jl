@@ -7,14 +7,14 @@ using AudioSchedules:
     Hook,
     Line,
     Map,
-    q_str,
+    QUOTIENT,
     SawTooth,
     Scale,
     triples,
     Weaver,
     write_stateful!,
     write_buffer
-import Base: isone, Rational, show
+import Base: getproperty, Rational, show
 using Base.Threads: nthreads, @spawn
 using PortAudio: PortAudioStream
 using QML:
@@ -91,7 +91,15 @@ struct Interval
     octave::Int
 end
 
-isone(interval::Interval) = interval.numerator == 1 && interval.denominator == 1 && interval.octave == 0
+const INTERVAL_DEFAULTS = (numerator = 1, denominator = 1, octave = 0)
+
+function Interval(;
+    numerator = INTERVAL_DEFAULTS.numerator,
+    denominator = INTERVAL_DEFAULTS.denominator,
+    octave = INTERVAL_DEFAULTS.octave
+)
+    Interval(numerator, denominator, octave)
+end
 
 function Rational(interval::Interval)
     interval.numerator // interval.denominator * (2 // 1)^interval.octave
@@ -110,35 +118,60 @@ function Interval(rational::Rational)
     end
     # then, divide the top by two if applicable
     if iseven(rational.num)
-        rational = rational//2
+        rational = rational / 2
         octave = octave + 1
     end
     Interval(rational.num, rational.den, octave)
 end
 
+function get_parse(dictionary, property)
+    result = dictionary[String(property)]
+    if result === nothing
+        getproperty(INTERVAL_DEFAULTS, property)
+    else
+        parse(Int, result)
+    end
+end
+
+# TODO: reuse from AudioSchedules
 function Interval(text::String)
-    Interval(q_str(text))
+    a_match = match(QUOTIENT, text)
+    if a_match === nothing
+        throw(Meta.ParseError("Can't parse interval $text"))
+    end
+    Interval(
+        get_parse(a_match, :numerator),
+        get_parse(a_match, :denominator),
+        get_parse(a_match, :octave)
+    )
+end
+
+function Interval(interval::Interval)
+    interval
+end
+
+function print_no_default(io, interval, prefix, property)
+    value = getproperty(interval, property)
+    if value != getproperty(INTERVAL_DEFAULTS, property)
+        print(io, prefix)
+        show(io, value)
+    end
 end
 
 function show(io::IO, interval::Interval)
     # just show not-obvious parts
-    numerator = interval.numerator
-    denominator = interval.denominator
-    octave = interval.octave
     print(io, '"')
-    show(io, numerator)
-    if denominator != 1
-        print(io, '/')
-        show(io, denominator)
-    end
-    if octave != 0
-        print(io, 'o')
-        show(io, octave)
-    end
+    show(io, interval.numerator)
+    print_no_default(io, interval,  '/', :denominator)
+    print_no_default(io, interval, 'o', :octave)
     print(io, '"')
 end
 
-get_interval(something) = Interval(something.numerator, something.denominator, something.octave)
+function interval_pieces(note_or_chord)
+    (note_or_chord.numerator, note_or_chord.denominator, note_or_chord.octave)
+end
+
+get_interval(note_or_chord) = Interval(interval_pieces(note_or_chord)...)
 
 # it would be nice if we could have a nested interval
 # but because this will be used as a list-model, we can't
@@ -150,10 +183,22 @@ mutable struct Note
     beats::Int
 end
 
-function Note(; interval = 1//1, beats = 1)
-    true_interval = Interval(interval)
+const CHORD_DEFAULTS = (words = "", beats = 1, notes = Note[], interval = Interval())
+
+function getproperty(note::Note, property::Symbol)
+    if property === :interval
+        get_interval(note)
+    else
+        getfield(note, property)
+    end
+end
+
+function Note(; 
+    interval = CHORD_DEFAULTS.interval,
+    beats = CHORD_DEFAULTS.beats
+)
     # convert strings and rationals to intervals first
-    Note(true_interval.numerator, true_interval.denominator, true_interval.octave, beats)
+    Note(interval_pieces(Interval(interval))..., beats)
 end
 
 """
@@ -168,90 +213,93 @@ mutable struct Chord
     octave::Int
     beats::Int
     notes::Vector{Note}
-    # we need a separate field here for the list model
+    # we need a separate property here for the list model
     notes_model::ListModel
 end
 export Chord
 
+function getproperty(chord::Chord, property::Symbol)
+    if property === :interval
+        get_interval(chord)
+    else
+        getfield(chord, property)
+    end
+end
+
 function Chord(;
-    words = "",
-    interval = 1//1,
-    beats = 1,
+    words = CHORD_DEFAULTS.words,
+    interval = CHORD_DEFAULTS.interval,
+    beats = CHORD_DEFAULTS.beats,
     notes = Note[]
 )
-    true_interval = Interval(interval)
-    Chord(words, true_interval.numerator, true_interval.denominator, true_interval.octave, beats, notes, ListModel(notes))
+    Chord(words, interval_pieces(Interval(interval))..., beats, notes, ListModel(notes))
+end
+
+function print_no_default(io, note_or_chord, property, level, ignore_level, empty)
+    value = getproperty(note_or_chord, property)
+    if value != getproperty(CHORD_DEFAULTS, property)
+        _print(io, property => value, level, if empty
+            ignore_level
+        else
+            false
+        end)
+        false
+    else
+        empty
+    end
+end
+
+function print_empty(io, empty)
+    if empty
+        println(io, "{}")
+    end
 end
 
 # overload the yaml print functions
 # print them as if they were dicts
 function _print(io::IO, note::Note, level::Int=0, ignore_level::Bool=false)
     empty = true
-    interval = get_interval(note)
-    if !isone(interval)
-        _print(io, "interval" => interval, level, empty ? ignore_level : false)
-        empty = false
-    end
-    beats = note.beats
-    if !isone(beats)
-        _print(io, "beats" => beats, level, empty ? ignore_level : false)
-        empty = false
-    end
-    if empty
-        println(io, "{}")
-    end
+    empty = print_no_default(io, note, :interval, level, ignore_level, empty)
+    empty = print_no_default(io, note, :beats, level, ignore_level, empty)
+    print_empty(io, empty)
 end
 
 function _print(io::IO, chord::Chord, level::Int=0, ignore_level::Bool=false)
     empty = true
-    interval = get_interval(chord)
-    if !isone(interval)
-        _print(io, "interval" => interval, level, empty ? ignore_level : false)
-        empty = false
-    end
-    words = chord.words
-    if !isempty(words)
-        _print(io, "words" => words, level, empty ? ignore_level : false)
-        empty = false
-    end
-    beats = chord.beats
-    if beats != 1
-        _print(io, "beats" => beats, level, empty ? ignore_level : false)
-        empty = false
-    end
-    notes = chord.notes
-    if !isempty(notes)
-        _print(io, "notes" => notes, level, empty ? ignore_level : false)
-        empty = false
-    end
-    if empty
-        println(io, "{}")
-    end
+    empty = print_no_default(io, chord, :interval, level, ignore_level, empty)
+    empty = print_no_default(io, chord, :words, level, ignore_level, empty)
+    empty = print_no_default(io, chord, :beats, level, ignore_level, empty)
+    empty = print_no_default(io, chord, :notes, level, ignore_level, empty)
+    print_empty(io, empty)
 end
 
 # cumulative product of previous modulations
 function update_key(song, initial_key, chord_index)
     key = initial_key
     for chord in view(song, 1:(chord_index + 1))
-        key = key * Rational(get_interval(chord))
+        key = key * Rational(chord.interval)
     end
     key
 end
 
-function parse_note(dictionary::Dict)
+function get_default(dictionary, property)
+    get(dictionary, property, getproperty(CHORD_DEFAULTS, property))
+end
+
+function parse_note(dictionary)
     Note(;
-        interval = get(dictionary, "interval", 1//1), 
-        beats = get(dictionary, "beats", 1)
+        interval = get_default(dictionary, :interval), 
+        beats = get_default(dictionary, :beats)
     )
 end
 
 # TODO: add a special constructor to avoid Dict intermediates
-function parse_chord(dictionary::Dict)
-    note_dictionaries = get(dictionary, "notes", Dict{Any, Any}[])
-    Chord(
-        interval = get(dictionary, "interval", 1//1),
-        words = get(dictionary, "words", ""), 
-        beats = get(dictionary, "beats", 1),
+function parse_chord(dictionary)
+    note_dictionaries = get(dictionary, :notes, Dict{Symbol, Any}[])
+    Chord(;
+        interval = get_default(dictionary, :interval),
+        words = get_default(dictionary, :words), 
+        beats = get_default(dictionary, :beats),
         # empty lists will come in as nothing
         notes = if note_dictionaries === nothing
             Note[]
@@ -265,7 +313,7 @@ end
 function from_yaml!(chords_model, text)
     try
         # load first to catch errors early
-        result = load(String(text))
+        result = load(String(text); dicttype=Dict{Symbol,Any})
         # TODO: does empty! work? PR?
         while length(chords_model) > 0
             delete!(chords_model, 1)
@@ -316,12 +364,12 @@ function press!(buffer, song, presses, releases;
                         wave,
                         Cycles(
                             update_key(song, initial_key, chord_index) *
-                            Rational(get_interval(song[chord_index + 1].notes[voice_index + 1]))
+                            Rational(song[chord_index + 1].notes[voice_index + 1].interval)
                         ),
                     ),
                 ),
                 0s, 
-                0, Line => ramp, 1, Line => ramp, 1, Line => ramp, 0
+                0, Line => ramp, 1, Line => 0.5s, 1, Line => ramp, 0
             )
             # all three will be pairs of iterators and number of frames
             (ramp_up, sustain, ramp_down) = dummy_schedule
@@ -404,7 +452,7 @@ function edit_song(song;
     )
     try
         if test
-            simple_yaml = "- notes:\n    - interval: \"1o1\"\n    - {}\n- {}\n"
+            simple_yaml = "- notes:\n    - interval: \"3/2o1\"\n    - {}\n- {}\n"
             from_yaml!(chords_model, simple_yaml)
             # note: this is 1, 1 in julia
             put!(presses, (0, 0))
@@ -432,7 +480,7 @@ function add_note!(a_schedule, note, clock, key;
 )
     add!(
         a_schedule,
-        Map(Scale(volume), Map(wave, Cycles(key * Rational(get_interval(note))))),
+        Map(Scale(volume), Map(wave, Cycles(key * Rational(note.interval)))),
         clock,
         make_envelope(note.beats * beat_duration)...,
     )
@@ -445,7 +493,7 @@ function add_chord!(
     volume = DEFAULT_VOLUME,
     wave = DEFAULT_WAVE
 )
-    key = key * Rational(get_interval(chord))
+    key = key * Rational(chord.interval)
     foreach(
         let a_schedule = a_schedule, 
             clock = clock, 
@@ -515,7 +563,7 @@ julia> using Justly
 
 julia> using YAML: load
 
-julia> make_schedule(load(\"""
+julia> make_schedule(\"""
             - words: "I"
               notes:
                 - {}
@@ -534,20 +582,20 @@ julia> make_schedule(load(\"""
                 - interval: "3/2"
                 - interval: "5/4o1"
               
-         \"""))
+         \""")
 1.85 s 44100.0 Hz AudioSchedule
 ```
 
 Top-level lists will be unnested, so you can use YAML anchors to repeat themes.
 
 ```jldoctest make_schedule
-julia> make_schedule(load(\"""
+julia> make_schedule(\"""
             - &fifth
                 - notes:
                     - {}
                     - interval: "3/2"
             - *fifth
-        \"""))
+        \""")
 1.25 s 44100.0 Hz AudioSchedule
 ```
 """
@@ -572,6 +620,10 @@ function make_schedule(song;
         )
     end
     a_schedule
+end
+
+function make_schedule(song::AbstractString; kwargs...)
+    make_schedule(load(song; dicttype=Dict{Symbol,Any}); kwargs...)
 end
 export make_schedule
 

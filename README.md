@@ -1,12 +1,12 @@
 # Justly
 
 [![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://bramtayl.github.io/Justly.jl/dev)
-[![codecov](https://codecov.io/gh/bramtayl/Justly/branch/master/graph/badge.svg?token=MK1IMGK0GE)](https://codecov.io/gh/bramtayl/Justly)
+[![codecov](https://codecov.io/gh/bramtayl/Justly.jl/branch/master/graph/badge.svg?token=MK1IMGK0GE)](https://codecov.io/gh/bramtayl/Justly.jl)
 
 You can use Justly to both compose and play music using any pitches you want.
 Using staff notation, you can only write the notes of the 12-tone scale.
 Some intervals in any 12-tone scale are close to harmonic, but other intervals are not.
-Johnston expanded staff notation [here](http://marsbat.space/pdfs/EJItext.pdf), but relying on staff notation limited him.
+Johnston [expanded staff notation](http://marsbat.space/pdfs/EJItext.pdf), but relying on staff notation limited him.
 
 To start Justly, start Julia and run
 
