@@ -43,7 +43,7 @@ For example:
 Starting key: `440Hz`
 
 | Key | Voice 1 | Voice 2 | Voice 3 |
-| - | - | - | - | - |
+| - | - | - | - |
 | `1` for `1` | `1` for `1` | `3/2` for `1` | `5/4o1` for `1` |
 | `2/3` for `1` | `3/2` for `1` | `5/4o1` for `1` | `o2` for `1` |
 | `3/2` for `2` | `1` for `2` | `3/2` for `2` | `5/4o1` for `2` |
