@@ -339,21 +339,23 @@ end
 """
     function edit_song(song; ramp = 0.1s, options...)
 
-You can use `edit` song to edit songs interactively. 
+Use to edit songs interactively. 
 The interface might be slow at first while Julia is compiling.
 
-- `song` is YAML or a vector of [`Chord`]s.
+- `song` is a YAML string or a vector of [`Chord`](@refs)s.
 - `ramp` is the onset/offset time, in time units (like `s`).
 - `options` will be passed to [`make_schedule`](@ref).
 
 For more information, see the `README`.
+
+Try running `ENV["QT_QPA_PLATFORM"] = "xcb"` on [Wayland](https://github.com/barche/QML.jl/issues/125).
 
 ```julia
 julia> using Justly
 
 julia> song = Chord[];
 
-julia> edit_song(song; test = true)
+julia> edit_song(song)
 ```
 """
 function edit_song(song;
@@ -496,7 +498,7 @@ end
     )
 
 Create an `AudioSchedule` from your song.
-- `song` is `YAML` or a vector of [`Chord`](@ref)s.
+- `song` is a `YAML` string or a vector of [`Chord`](@ref)s.
 - `beat_duration` is the duration of a beat, with time units (like `s`).
 - `initial_key` is initial key of your song, in frequency units (like `Hz`). 
 - `make_envelope` is a function to make an envelope, like [`pluck`](@ref) or [`pedal`](@ref).
@@ -536,7 +538,7 @@ julia> make_schedule(load(\"""
 1.85 s 44100.0 Hz AudioSchedule
 ```
 
-Top-level lists will be unnested, so you use YAML anchors to repeat themes.
+Top-level lists will be unnested, so you can use YAML anchors to repeat themes.
 
 ```jldoctest make_schedule
 julia> make_schedule(load(\"""
