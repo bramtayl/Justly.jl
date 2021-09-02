@@ -202,7 +202,7 @@ function Note(;
 end
 
 """
-    Chord(dictionary::Dict)
+mutable struct Chord
 
 A Julia representation of a chord. Pass a vector of `Chord`s to [`edit_song`](@ref).
 """
