@@ -1,7 +1,7 @@
 # Justly
 
 [![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://bramtayl.github.io/Justly.jl/dev)
-[![Coverage](https://codecov.io/gh/bramtayl/Justly.jl/branch/master/graph/badge.svg)](https://app.codecov.io/gh/bramtayl/Justly)
+[![codecov](https://codecov.io/gh/bramtayl/Justly/branch/master/graph/badge.svg?token=MK1IMGK0GE)](https://codecov.io/gh/bramtayl/Justly)
 
 You can use Justly to both compose and play music using any pitches you want.
 Using staff notation, you can only write the notes of the 12-tone scale.
