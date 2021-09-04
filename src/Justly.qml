@@ -25,7 +25,7 @@ ApplicationWindow {
                 implicitHeight: button_side
                 implicitWidth: button_side
                 onClicked: {
-                    Julia.from_yaml(yaml.text)
+                    yaml.text = Julia.from_yaml(yaml.text)
                 }
             }
             ScrollView {

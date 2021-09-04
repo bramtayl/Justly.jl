@@ -150,7 +150,7 @@ function Interval(interval::Interval)
     interval
 end
 
-function print_no_default(io, interval, prefix, property)
+@inline function print_no_default(io, interval, prefix, property)
     value = getproperty(interval, property)
     if value != getproperty(INTERVAL_DEFAULTS, property)
         print(io, prefix)
@@ -185,7 +185,7 @@ end
 
 const CHORD_DEFAULTS = (words = "", beats = 1, notes = Note[], interval = Interval())
 
-function getproperty(note::Note, property::Symbol)
+@inline function getproperty(note::Note, property::Symbol)
     if property === :interval
         get_interval(note)
     else
@@ -218,7 +218,7 @@ mutable struct Chord
 end
 export Chord
 
-function getproperty(chord::Chord, property::Symbol)
+@inline function getproperty(chord::Chord, property::Symbol)
     if property === :interval
         get_interval(chord)
     else
@@ -235,7 +235,7 @@ function Chord(;
     Chord(words, interval_pieces(Interval(interval))..., beats, notes, ListModel(notes))
 end
 
-function print_no_default(io, note_or_chord, property, level, ignore_level, empty)
+@inline function print_no_default(io, note_or_chord, property, level, ignore_level, empty)
     value = getproperty(note_or_chord, property)
     if value != getproperty(CHORD_DEFAULTS, property)
         _print(io, property => value, level, if empty
@@ -295,18 +295,23 @@ end
 
 # TODO: add a special constructor to avoid Dict intermediates
 function parse_chord(dictionary)
-    note_dictionaries = get(dictionary, :notes, Dict{Symbol, Any}[])
     Chord(;
         interval = get_default(dictionary, :interval),
         words = get_default(dictionary, :words), 
         beats = get_default(dictionary, :beats),
         # empty lists will come in as nothing
-        notes = if note_dictionaries === nothing
-            Note[]
-        else
-            map(parse_note, note_dictionaries) 
-        end
+        notes = map(parse_note, get(dictionary, :notes, Dict{Symbol, Any}[]))
     )
+end
+
+function add_chord!(chords_model, dictionary::Dict)
+    push!(chords_model, parse_chord(dictionary))
+end
+
+function add_chord!(chords_model, chords::Vector)
+    for chord in chords
+        add_chord!(chords_model, chord)
+    end
 end
 
 # we are working with the model, not the underlying data, so qt can know what we're doing
@@ -319,13 +324,12 @@ function from_yaml!(chords_model, text)
             delete!(chords_model, 1)
         end
         for dictionary in result
-            push!(chords_model, parse_chord(dictionary))
+            add_chord!(chords_model, dictionary)
         end
+        text
     catch an_error
-        # TODO: more noisy error
-        @warn sprint(showerror, an_error)
+        string(an_error)
     end
-    nothing
 end
 
 function press!(buffer, song, presses, releases;
@@ -441,18 +445,20 @@ function edit_song(song;
     loadqml(joinpath(@__DIR__, "Justly.qml"), chords_model = chords_model, test = test)
     stream = PortAudioStream(0, 1, writer = Weaver(); warn_xruns = false)
     buffer = stream.sink_messanger.buffer
-    press_task = @spawn press!(buffer, song, presses, releases;
-        beat_duration = beat_duration,
-        initial_key = initial_key,
-        make_envelope = make_envelope,
-        ramp = ramp,
-        sample_rate = sample_rate,
-        volume = volume,
-        wave = wave
+    press_task = @spawn press!($buffer, $song, $presses, $releases;
+        beat_duration = $beat_duration,
+        initial_key = $initial_key,
+        make_envelope = $make_envelope,
+        ramp = $ramp,
+        sample_rate = $sample_rate,
+        volume = $volume,
+        wave = $wave
     )
     try
         if test
             simple_yaml = "- notes:\n    - interval: \"3/2o1\"\n    - {}\n- {}\n"
+            from_yaml!(chords_model, simple_yaml)
+            from_yaml!(chords_model, "nonsense")
             from_yaml!(chords_model, simple_yaml)
             # note: this is 1, 1 in julia
             put!(presses, (0, 0))
