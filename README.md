@@ -26,8 +26,8 @@ For example, one can write a fifth as `3/2`, or `3o-1`.
 You will likely only need to know 4 intervals:
 
 - Octave: `2/1`
-- Major fifth: `3/2`
-- Perfect third: `5/4`
+- Perfect fifth: `3/2`
+- Major third: `5/4`
 - Harmonic seventh: `7/4`
 
 You can create other intervals by multiplying and dividing these intervals.
