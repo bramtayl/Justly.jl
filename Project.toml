@@ -1,7 +1,7 @@
 name = "Justly"
 uuid = "3ed2f0d3-1e15-46aa-b21a-890b713d7b5d"
 authors = ["Brandon Taylor <brandon.taylor221@gmail.com> and contributors"]
-version = "0.0.1"
+version = "0.0.2"
 
 [deps]
 AudioSchedules = "0990df78-ca1d-4d03-ab92-318744ee3999"
@@ -14,7 +14,7 @@ Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
 YAML = "ddb6d928-2868-570f-bddf-ab3f9cf99eb6"
 
 [compat]
-AudioSchedules = "0.3"
+AudioSchedules = "0.4"
 PortAudio = "1.1"
 QML = "0.7"
 Qt5QuickControls2_jll = "5.15"

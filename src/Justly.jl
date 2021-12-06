@@ -4,6 +4,7 @@ using AudioSchedules:
     add!,
     AudioSchedule,
     Cycles,
+    fill_all_task_ios,
     Hook,
     Line,
     Map,
@@ -12,8 +13,8 @@ using AudioSchedules:
     Scale,
     triples,
     Weaver,
-    write_stateful!,
-    write_buffer
+    write_buffer,
+    write_series!
 import Base: getproperty, Rational, show
 using Base.Threads: nthreads, @spawn
 using PortAudio: PortAudioStream
@@ -33,14 +34,6 @@ import YAML: _print
 
 # reexport to avoid a QML bug
 export QML
-
-function write_channel(buffer, channel)
-    buffer_at = 0
-    for (stateful, stateful_to) in channel
-        buffer_at = write_stateful!(stateful, stateful_to, buffer, buffer_at)
-    end
-    write_buffer(buffer, buffer_at)
-end
 
 """
     pluck(duration; decay = -2.5 / s, slope = 1 / 0.005s, peak = 1)
@@ -332,14 +325,18 @@ function from_yaml!(chords_model, text)
     end
 end
 
-function press!(buffer, song, presses, releases;
+function reformat(sample_rate, wave, duration)
+    wave, round(Int, duration * sample_rate)
+end
+
+function press!(task_ios, song, presses, releases, buffer;
     beat_duration = DEFAULT_BEAT_DURATION,
     initial_key = DEFAULT_INITIAL_KEY,
     make_envelope = DEFAULT_MAKE_ENVELOPE,
     ramp = DEFAULT_RAMP,
     sample_rate = DEFAULT_SAMPLE_RATE,
     volume = DEFAULT_VOLUME,
-    wave = DEFAULT_WAVE
+    wave = DEFAULT_WAVE,
 )
     for (chord_index, voice_index) in presses
         buffer_at = 0
@@ -353,35 +350,39 @@ function press!(buffer, song, presses, releases;
                 volume = volume,
                 wave = wave
             )
-            for (stateful, stateful_to) in whole_schedule
+            for (series, series_total) in whole_schedule
                 if isready(releases)
                     break
                 end
-                buffer_at = write_stateful!(stateful, stateful_to, buffer, buffer_at)
+                buffer_at = write_series!(task_ios, series, series_total, buffer, buffer_at)
             end
         else
-            # TODO: avoid allocating a schedule here
-            dummy_schedule = AudioSchedule(; sample_rate = sample_rate)
-            add!(dummy_schedule, Map(
-                    Scale(volume),
+            # all three will be pairs of iterators and number of frames
+            (ramp_up, sustain, ramp_down) = map(
+                function ((wave, start_time, duration),)
+                    reformat(sample_rate, wave, duration)
+                end,
+                triples(
+                    sample_rate,
                     Map(
-                        wave,
-                        Cycles(
-                            update_key(song, initial_key, chord_index) *
-                            Rational(song[chord_index + 1].notes[voice_index + 1].interval)
+                        Scale(volume),
+                        Map(
+                            wave,
+                            Cycles(
+                                update_key(song, initial_key, chord_index) *
+                                Rational(song[chord_index + 1].notes[voice_index + 1].interval)
+                            ),
                         ),
                     ),
-                ),
-                0s, 
-                0, Line => ramp, 1, Line => 0.5s, 1, Line => ramp, 0
+                    0s, 
+                    0, Line => ramp, 1, Line => 0.5s, 1, Line => ramp, 0
+                )
             )
-            # all three will be pairs of iterators and number of frames
-            (ramp_up, sustain, ramp_down) = dummy_schedule
-            buffer_at = write_stateful!(ramp_up..., buffer, buffer_at)
+            buffer_at = write_series!(task_ios, ramp_up..., buffer, buffer_at)
             while !isready(releases)
-                buffer_at = write_stateful!(sustain..., buffer, buffer_at)
+                buffer_at = write_series!(task_ios, sustain..., buffer, buffer_at)
             end
-            buffer_at = write_stateful!(ramp_down..., buffer, buffer_at)
+            buffer_at = write_series!(task_ios, ramp_down..., buffer, buffer_at)
         end
         write_buffer(buffer, buffer_at)
         take!(releases)
@@ -414,6 +415,7 @@ function edit_song(song;
     beat_duration = DEFAULT_BEAT_DURATION,
     initial_key = DEFAULT_INITIAL_KEY,
     make_envelope = DEFAULT_MAKE_ENVELOPE,
+    number_of_tasks = nthreads() - 2,
     ramp = DEFAULT_RAMP,
     sample_rate = DEFAULT_SAMPLE_RATE,
     volume = DEFAULT_VOLUME,
@@ -445,7 +447,8 @@ function edit_song(song;
     loadqml(joinpath(@__DIR__, "Justly.qml"), chords_model = chords_model, test = test)
     stream = PortAudioStream(0, 1, writer = Weaver(); warn_xruns = false)
     buffer = stream.sink_messanger.buffer
-    press_task = @spawn press!($buffer, $song, $presses, $releases;
+    task_ios = fill_all_task_ios(buffer; number_of_tasks = number_of_tasks)
+    press_task = @spawn press!($task_ios, $song, $presses, $releases, $buffer;
         beat_duration = $beat_duration,
         initial_key = $initial_key,
         make_envelope = $make_envelope,
@@ -454,23 +457,28 @@ function edit_song(song;
         volume = $volume,
         wave = $wave
     )
+    if test
+        simple_yaml = "- notes:\n    - interval: \"3/2o1\"\n    - {}\n- {}\n"
+        from_yaml!(chords_model, simple_yaml)
+        from_yaml!(chords_model, "nonsense")
+        from_yaml!(chords_model, simple_yaml)
+        # note: this is 1, 1 in julia
+        put!(presses, (0, 0))
+        put!(releases, nothing)
+        put!(presses, (0, -1))
+        put!(releases, nothing)
+        @test String(YAML.write(song)) == simple_yaml
+    end
     try
-        if test
-            simple_yaml = "- notes:\n    - interval: \"3/2o1\"\n    - {}\n- {}\n"
-            from_yaml!(chords_model, simple_yaml)
-            from_yaml!(chords_model, "nonsense")
-            from_yaml!(chords_model, simple_yaml)
-            # note: this is 1, 1 in julia
-            put!(presses, (0, 0))
-            put!(releases, nothing)
-            put!(presses, (0, -1))
-            put!(releases, nothing)
-            @test String(YAML.write(song)) == simple_yaml
+        try
+            exec()
+        finally
+            close(presses)
+            wait(press_task)
         end
-        exec()
-        close(presses)
-    finally
-        wait(press_task)
+    catch an_error  
+        println("QML errored:")
+        showerror(stdout, an_error)
     end
     close(releases)
     close(stream)
