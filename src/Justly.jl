@@ -316,12 +316,15 @@ function from_yaml!(chords_model, text)
         while length(chords_model) > 0
             delete!(chords_model, 1)
         end
+        if !(result isa Vector)
+            throw(ArgumentError("Isn't a list of chords"))
+        end
         for dictionary in result
             add_chord!(chords_model, dictionary)
         end
         text
     catch an_error
-        string(an_error)
+        sprint(showerror, an_error)
     end
 end
 
@@ -374,7 +377,7 @@ function press!(task_ios, song, presses, releases, buffer;
                             ),
                         ),
                     ),
-                    0s, 
+                    0s,
                     0, Line => ramp, 1, Line => 0.5s, 1, Line => ramp, 0
                 )
             )
