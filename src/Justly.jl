@@ -444,7 +444,12 @@ function press!(
 end
 
 """
-    function edit_song(song_file; ramp = 0.1s, number_of_tasks = nthreads() - 2, test = false, options...)
+    function edit_song(song_file; 
+        ramp = 0.1s, 
+        number_of_tasks = nthreads() - 2, 
+        test = false, 
+        options...
+    )
 
 Use to edit songs interactively. 
 The interface might be slow at first while Julia is compiling.
@@ -499,7 +504,7 @@ function edit_song(
             add_chord!(song, chord)
         end
     end
-    
+
     chords_model = ListModel(song)
 
     presses = Channel{Tuple{Int, Int}}(0)
