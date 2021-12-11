@@ -13,22 +13,27 @@ ApplicationWindow {
     property int default_spacing: 5
     property string add_text: "+"
     property string remove_text: "−"
-    ListView {
-        id: chords_view
-        height: parent.height
+    ScrollView {
         width: parent.width
+        height: parent.height
         clip: true
-        model: chords_model
-        snapMode: ListView.SnapToItem
-        delegate: Chord { }
-        footer: Button {
-            implicitWidth: button_side
-            implicitHeight: button_side
-            text: add_text
-            font.pointSize: button_text_size
-            onClicked: {
-                chords_model.append([])
-                Julia.to_yaml()
+        ListView {
+            id: chords_view
+            height: parent.height
+            width: parent.width
+            clip: true
+            model: chords_model
+            snapMode: ListView.SnapToItem
+            delegate: Chord { }
+            footer: Button {
+                implicitWidth: button_side
+                implicitHeight: button_side
+                text: add_text
+                font.pointSize: button_text_size
+                onClicked: {
+                    chords_model.append([])
+                    Julia.to_yaml()
+                }
             }
         }
     }
