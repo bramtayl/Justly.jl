@@ -13,7 +13,7 @@ Row {
         value: beats
         onValueModified: {
             beats = value
-            yaml.text = Julia.to_yaml()
+            Julia.to_yaml()
         }
     }
 }

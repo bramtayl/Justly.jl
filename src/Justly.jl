@@ -29,7 +29,7 @@ using Qt5QuickControls2_jll: Qt5QuickControls2_jll
 using SampledSignals: samplerate
 using Test: @test
 using Unitful: Hz, ms, s
-using YAML: YAML, load
+using YAML: load, load_file, write_file
 import YAML: _print
 
 # reexport to avoid a QML bug
@@ -89,7 +89,7 @@ const INTERVAL_DEFAULTS = (numerator = 1, denominator = 1, octave = 0)
 function Interval(;
     numerator = INTERVAL_DEFAULTS.numerator,
     denominator = INTERVAL_DEFAULTS.denominator,
-    octave = INTERVAL_DEFAULTS.octave
+    octave = INTERVAL_DEFAULTS.octave,
 )
     Interval(numerator, denominator, octave)
 end
@@ -135,7 +135,7 @@ function Interval(text::String)
     Interval(
         get_parse(a_match, :numerator),
         get_parse(a_match, :denominator),
-        get_parse(a_match, :octave)
+        get_parse(a_match, :octave),
     )
 end
 
@@ -155,7 +155,7 @@ function show(io::IO, interval::Interval)
     # just show not-obvious parts
     print(io, '"')
     show(io, interval.numerator)
-    print_no_default(io, interval,  '/', :denominator)
+    print_no_default(io, interval, '/', :denominator)
     print_no_default(io, interval, 'o', :octave)
     print(io, '"')
 end
@@ -186,10 +186,7 @@ const CHORD_DEFAULTS = (words = "", beats = 1, notes = Note[], interval = Interv
     end
 end
 
-function Note(; 
-    interval = CHORD_DEFAULTS.interval,
-    beats = CHORD_DEFAULTS.beats
-)
+function Note(; interval = CHORD_DEFAULTS.interval, beats = CHORD_DEFAULTS.beats)
     # convert strings and rationals to intervals first
     Note(interval_pieces(Interval(interval))..., beats)
 end
@@ -223,7 +220,7 @@ function Chord(;
     words = CHORD_DEFAULTS.words,
     interval = CHORD_DEFAULTS.interval,
     beats = CHORD_DEFAULTS.beats,
-    notes = Note[]
+    notes = Note[],
 )
     Chord(words, interval_pieces(Interval(interval))..., beats, notes, ListModel(notes))
 end
@@ -250,14 +247,14 @@ end
 
 # overload the yaml print functions
 # print them as if they were dicts
-function _print(io::IO, note::Note, level::Int=0, ignore_level::Bool=false)
+function _print(io::IO, note::Note, level::Int = 0, ignore_level::Bool = false)
     empty = true
     empty = print_no_default(io, note, :interval, level, ignore_level, empty)
     empty = print_no_default(io, note, :beats, level, ignore_level, empty)
     print_empty(io, empty)
 end
 
-function _print(io::IO, chord::Chord, level::Int=0, ignore_level::Bool=false)
+function _print(io::IO, chord::Chord, level::Int = 0, ignore_level::Bool = false)
     empty = true
     empty = print_no_default(io, chord, :interval, level, ignore_level, empty)
     empty = print_no_default(io, chord, :words, level, ignore_level, empty)
@@ -281,8 +278,8 @@ end
 
 function parse_note(dictionary)
     Note(;
-        interval = get_default(dictionary, :interval), 
-        beats = get_default(dictionary, :beats)
+        interval = get_default(dictionary, :interval),
+        beats = get_default(dictionary, :beats),
     )
 end
 
@@ -290,49 +287,83 @@ end
 function parse_chord(dictionary)
     Chord(;
         interval = get_default(dictionary, :interval),
-        words = get_default(dictionary, :words), 
+        words = get_default(dictionary, :words),
         beats = get_default(dictionary, :beats),
         # empty lists will come in as nothing
-        notes = map(parse_note, get(dictionary, :notes, Dict{Symbol, Any}[]))
+        notes = map(parse_note, get(dictionary, :notes, Dict{Symbol, Any}[])),
     )
 end
 
-function add_chord!(chords_model, dictionary::Dict)
-    push!(chords_model, parse_chord(dictionary))
+function add_chord!(song, dictionary::Dict)
+    push!(song, parse_chord(dictionary))
 end
 
-function add_chord!(chords_model, chords::Vector)
-    for chord in chords
-        add_chord!(chords_model, chord)
+function add_chord!(song, new_chords::Vector)
+    for chord in new_chords
+        add_chord!(song, chord)
     end
 end
 
-# we are working with the model, not the underlying data, so qt can know what we're doing
-function from_yaml!(chords_model, text)
-    try
-        # load first to catch errors early
-        result = load(String(text); dicttype=Dict{Symbol,Any})
-        # TODO: does empty! work? PR?
-        while length(chords_model) > 0
-            delete!(chords_model, 1)
-        end
-        if !(result isa Vector)
-            throw(ArgumentError("Isn't a list of chords"))
-        end
-        for dictionary in result
-            add_chord!(chords_model, dictionary)
-        end
-        text
-    catch an_error
-        sprint(showerror, an_error)
-    end
-end
-
-function reformat(sample_rate, wave, duration)
+function duration_to_samples(sample_rate, wave, duration)
     wave, round(Int, duration * sample_rate)
 end
 
-function press!(task_ios, song, presses, releases, buffer;
+function precompile_song(
+    task_ios,
+    song,
+    buffer;
+    beat_duration = DEFAULT_BEAT_DURATION,
+    initial_key = DEFAULT_INITIAL_KEY,
+    make_envelope = DEFAULT_MAKE_ENVELOPE,
+    sample_rate = DEFAULT_SAMPLE_RATE,
+    volume = DEFAULT_VOLUME,
+    wave = DEFAULT_WAVE,
+)
+    for (series, _) in make_schedule(
+        song;
+        beat_duration = beat_duration,
+        initial_key = initial_key,
+        make_envelope = make_envelope,
+        sample_rate = sample_rate,
+        volume = volume,
+        wave = wave,
+    )
+        write_series!(task_ios, series, 1, buffer, 0)
+    end
+end
+
+function get_dummy_envelope(
+    frequency;
+    ramp = DEFAULT_RAMP,
+    sample_rate = DEFAULT_SAMPLE_RATE,
+    volume = DEFAULT_VOLUME,
+    wave = DEFAULT_WAVE,
+)
+    map(
+        function ((wave, start_time, duration),)
+            duration_to_samples(sample_rate, wave, duration)
+        end,
+        triples(
+            sample_rate,
+            Map(Scale(volume), Map(wave, Cycles(frequency))),
+            0s,
+            0,
+            Line => ramp,
+            1,
+            Line => 0.5s,
+            1,
+            Line => ramp,
+            0,
+        ),
+    )
+end
+
+function press!(
+    task_ios,
+    song,
+    presses,
+    releases,
+    buffer;
     beat_duration = DEFAULT_BEAT_DURATION,
     initial_key = DEFAULT_INITIAL_KEY,
     make_envelope = DEFAULT_MAKE_ENVELOPE,
@@ -341,19 +372,51 @@ function press!(task_ios, song, presses, releases, buffer;
     volume = DEFAULT_VOLUME,
     wave = DEFAULT_WAVE,
 )
+    (ramp_up, sustain, ramp_down) = get_dummy_envelope(
+        440Hz;
+        ramp = ramp,
+        sample_rate = sample_rate,
+        volume = volume,
+        wave = wave,
+    )
+    write_series!(task_ios, ramp_up[1], 1, buffer, 0)
+    write_series!(task_ios, sustain[1], 1, buffer, 0)
+    write_series!(task_ios, ramp_down[1], 1, buffer, 0)
+    precompile_song(
+        task_ios,
+        song,
+        buffer;
+        beat_duration = beat_duration,
+        initial_key = initial_key,
+        make_envelope = make_envelope,
+        sample_rate = sample_rate,
+        volume = volume,
+        wave = wave,
+    )
     for (chord_index, voice_index) in presses
         buffer_at = 0
         if voice_index < 0
-            whole_schedule = make_schedule(
+            precompile_song(
+                task_ios,
+                song,
+                buffer;
+                beat_duration = beat_duration,
+                initial_key = initial_key,
+                make_envelope = make_envelope,
+                sample_rate = sample_rate,
+                volume = volume,
+                wave = wave,
+            )
+            # run once to precompile
+            for (series, series_total) in make_schedule(
                 (@view song[(chord_index + 1):end]);
                 beat_duration = beat_duration,
                 initial_key = update_key(song, initial_key, chord_index - 1),
                 make_envelope = make_envelope,
                 sample_rate = sample_rate,
                 volume = volume,
-                wave = wave
+                wave = wave,
             )
-            for (series, series_total) in whole_schedule
                 if isready(releases)
                     break
                 end
@@ -361,25 +424,13 @@ function press!(task_ios, song, presses, releases, buffer;
             end
         else
             # all three will be pairs of iterators and number of frames
-            (ramp_up, sustain, ramp_down) = map(
-                function ((wave, start_time, duration),)
-                    reformat(sample_rate, wave, duration)
-                end,
-                triples(
-                    sample_rate,
-                    Map(
-                        Scale(volume),
-                        Map(
-                            wave,
-                            Cycles(
-                                update_key(song, initial_key, chord_index) *
-                                Rational(song[chord_index + 1].notes[voice_index + 1].interval)
-                            ),
-                        ),
-                    ),
-                    0s,
-                    0, Line => ramp, 1, Line => 0.5s, 1, Line => ramp, 0
-                )
+            (ramp_up, sustain, ramp_down) = get_dummy_envelope(
+                update_key(song, initial_key, chord_index) *
+                Rational(song[chord_index + 1].notes[voice_index + 1].interval);
+                ramp = ramp,
+                sample_rate = sample_rate,
+                volume = volume,
+                wave = wave,
             )
             buffer_at = write_series!(task_ios, ramp_up..., buffer, buffer_at)
             while !isready(releases)
@@ -393,13 +444,15 @@ function press!(task_ios, song, presses, releases, buffer;
 end
 
 """
-    function edit_song(song; ramp = 0.1s, options...)
+    function edit_song(song_file; ramp = 0.1s, number_of_tasks = nthreads() - 2, test = false, options...)
 
 Use to edit songs interactively. 
 The interface might be slow at first while Julia is compiling.
 
-- `song` is a YAML string or a vector of [`Chord`](@refs)s.
+- `song_file` is a YAML string or a vector of [`Chord`](@refs)s. Will be created if it doesn't exist.
 - `ramp` is the onset/offset time, in time units (like `s`).
+- `number_of_tasks` is the number of tasks to use to process data. Defaults to 2 less than the number of threads; we need 1 master thread for QML and 1 master thread for AudioSchedules.
+- If `test` is true, will open the editor briefly to test it.
 - `options` will be passed to [`make_schedule`](@ref).
 
 For more information, see the `README`.
@@ -409,12 +462,19 @@ Try running `ENV["QT_QPA_PLATFORM"] = "xcb"` on [Wayland](https://github.com/bar
 ```julia
 julia> using Justly
 
-julia> song = Chord[];
+julia> write("test_song.yml", \"""
+- interval: "2/3"
+  notes:
+    - interval: "3/2"
+\""")
 
-julia> edit_song(song)
+julia> edit_song("test_song.yml")
+
+julia> rm("test_song.yml")
 ```
 """
-function edit_song(song;
+function edit_song(
+    song_file;
     beat_duration = DEFAULT_BEAT_DURATION,
     initial_key = DEFAULT_INITIAL_KEY,
     make_envelope = DEFAULT_MAKE_ENVELOPE,
@@ -425,61 +485,93 @@ function edit_song(song;
     wave = DEFAULT_WAVE,
     test = false,
 )
-    if nthreads() < 2
-        error("Justly needs at least 2 threads to function")
+    if nthreads() < 3
+        error("Justly needs at least 3 threads to function")
     end
-    qmlfunction("to_yaml", let song = song
-        () -> YAML.write(song)
-    end)
 
+    song = Chord[]
+    if isfile(song_file)
+        parsed = load_file(song_file; dicttype = Dict{Symbol, Any})
+        if !(parsed isa Vector)
+            throw(ArgumentError("Isn't a list of chords"))
+        end
+        for chord in parsed
+            add_chord!(song, chord)
+        end
+    end
+    
     chords_model = ListModel(song)
-    qmlfunction("from_yaml", let chords_model = chords_model
-        text -> from_yaml!(chords_model, text)
-    end)
 
     presses = Channel{Tuple{Int, Int}}(0)
-    qmlfunction("press", let presses = presses
-        (chord_index, voice_index) -> put!(presses, (chord_index, voice_index))
-    end)
+
+    qmlfunction(
+        "press",
+        let presses = presses
+            (chord_index, voice_index) -> put!(presses, (chord_index, voice_index))
+        end,
+    )
 
     releases = Channel{Nothing}(0)
     qmlfunction("release", let releases = releases
         () -> put!(releases, nothing)
     end)
 
+    qmlfunction("to_yaml", let song_file = song_file, song = song
+        () -> write_file(song_file, song)
+    end)
+
     loadqml(joinpath(@__DIR__, "Justly.qml"), chords_model = chords_model, test = test)
     stream = PortAudioStream(0, 1, writer = Weaver(); warn_xruns = false)
     buffer = stream.sink_messanger.buffer
     task_ios = fill_all_task_ios(buffer; number_of_tasks = number_of_tasks)
-    press_task = @spawn press!($task_ios, $song, $presses, $releases, $buffer;
-        beat_duration = $beat_duration,
-        initial_key = $initial_key,
-        make_envelope = $make_envelope,
-        ramp = $ramp,
-        sample_rate = $sample_rate,
-        volume = $volume,
-        wave = $wave
+    press_task = Task(
+        let task_ios = task_ios,
+            song = song,
+            presses = presses,
+            releases = releases,
+            buffer = buffer,
+            beat_duration = beat_duration,
+            initial_key = initial_key,
+            make_envelope = make_envelope,
+            ramp = ramp,
+            sample_rate = sample_rate,
+            volume = volume,
+            wave = wave
+
+            () -> press!(
+                task_ios,
+                song,
+                presses,
+                releases,
+                buffer;
+                beat_duration = beat_duration,
+                initial_key = initial_key,
+                make_envelope = make_envelope,
+                ramp = ramp,
+                sample_rate = sample_rate,
+                volume = volume,
+                wave = wave,
+            )
+        end,
     )
+    press_task.sticky = false
+    schedule(press_task)
     if test
-        simple_yaml = "- notes:\n    - interval: \"3/2o1\"\n    - {}\n- {}\n"
-        from_yaml!(chords_model, simple_yaml)
-        from_yaml!(chords_model, "nonsense")
-        from_yaml!(chords_model, simple_yaml)
         # note: this is 1, 1 in julia
         put!(presses, (0, 0))
         put!(releases, nothing)
         put!(presses, (0, -1))
         put!(releases, nothing)
-        @test String(YAML.write(song)) == simple_yaml
     end
     try
         try
             exec()
         finally
+            # to catch errors in the task
             close(presses)
             wait(press_task)
         end
-    catch an_error  
+    catch an_error
         println("QML errored:")
         showerror(stdout, an_error)
     end
@@ -489,11 +581,15 @@ function edit_song(song;
 end
 export edit_song
 
-function add_note!(a_schedule, note, clock, key;
+function add_note!(
+    a_schedule,
+    note,
+    clock,
+    key;
     wave = DEFAULT_WAVE,
     beat_duration = DEFAULT_BEAT_DURATION,
     make_envelope = DEFAULT_MAKE_ENVELOPE,
-    volume = DEFAULT_VOLUME
+    volume = DEFAULT_VOLUME,
 )
     add!(
         a_schedule,
@@ -504,29 +600,37 @@ function add_note!(a_schedule, note, clock, key;
 end
 
 function add_chord!(
-    a_schedule, chord::Chord, clock, key; 
+    a_schedule,
+    chord::Chord,
+    clock,
+    key;
     beat_duration = DEFAULT_BEAT_DURATION,
     make_envelope = DEFAULT_MAKE_ENVELOPE,
     volume = DEFAULT_VOLUME,
-    wave = DEFAULT_WAVE
+    wave = DEFAULT_WAVE,
 )
     key = key * Rational(chord.interval)
     foreach(
-        let a_schedule = a_schedule, 
-            clock = clock, 
+        let a_schedule = a_schedule,
+            clock = clock,
             key = key,
             wave = wave,
             beat_duration = beat_duration,
             make_envelope = make_envelope,
             volume = volume
-            note -> add_note!(a_schedule, note, clock, key;
+
+            note -> add_note!(
+                a_schedule,
+                note,
+                clock,
+                key;
                 wave = wave,
                 beat_duration = beat_duration,
                 make_envelope = make_envelope,
-                volume = volume
+                volume = volume,
             )
         end,
-        chord.notes
+        chord.notes,
     )
     key, clock + chord.beats * beat_duration
 end
@@ -535,18 +639,26 @@ function add_chord!(a_schedule, dictionary::Dict, clock, key; options...)
     add_chord!(a_schedule, parse_chord(dictionary), clock, key; options...)
 end
 
-function add_chord!(a_schedule, song::Vector, clock, key;
+function add_chord!(
+    a_schedule,
+    song::Vector,
+    clock,
+    key;
     beat_duration = DEFAULT_BEAT_DURATION,
     make_envelope = DEFAULT_MAKE_ENVELOPE,
     volume = DEFAULT_VOLUME,
-    wave = DEFAULT_WAVE
+    wave = DEFAULT_WAVE,
 )
     for chord in song
-        key, clock = add_chord!(a_schedule, chord, clock, key;
+        key, clock = add_chord!(
+            a_schedule,
+            chord,
+            clock,
+            key;
             beat_duration = beat_duration,
             make_envelope = make_envelope,
             volume = volume,
-            wave = wave
+            wave = wave,
         )
     end
     key, clock
@@ -616,31 +728,35 @@ julia> make_schedule(\"""
 1.25 s 44100.0 Hz AudioSchedule
 ```
 """
-function make_schedule(song; 
+function make_schedule(
+    song;
     beat_duration = DEFAULT_BEAT_DURATION,
     initial_key = DEFAULT_INITIAL_KEY,
     make_envelope = DEFAULT_MAKE_ENVELOPE,
     sample_rate = DEFAULT_SAMPLE_RATE,
     volume = DEFAULT_VOLUME,
-    wave = DEFAULT_WAVE
+    wave = DEFAULT_WAVE,
 )
     clock = 0s
     key = initial_key
     a_schedule = AudioSchedule(; sample_rate = sample_rate)
     for chord in song
-        key, clock =
-            add_chord!(a_schedule, chord, clock, key; 
-                beat_duration = beat_duration,
-                make_envelope = make_envelope,
-                volume = volume,
-                wave = wave
+        key, clock = add_chord!(
+            a_schedule,
+            chord,
+            clock,
+            key;
+            beat_duration = beat_duration,
+            make_envelope = make_envelope,
+            volume = volume,
+            wave = wave,
         )
     end
     a_schedule
 end
 
 function make_schedule(song::AbstractString; kwargs...)
-    make_schedule(load(song; dicttype=Dict{Symbol,Any}); kwargs...)
+    make_schedule(load(song; dicttype = Dict{Symbol, Any}); kwargs...)
 end
 export make_schedule
 

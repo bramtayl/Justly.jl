@@ -10,7 +10,7 @@ Row {
         text: "+"
         onClicked: {
             notes_model.insert(index, [])
-            yaml.text = Julia.to_yaml()
+            Julia.to_yaml()
         }
     }
     Column {
@@ -23,7 +23,7 @@ Row {
             text: remove_text
             onClicked: {
                 notes_model.remove(index)
-                yaml.text = Julia.to_yaml()
+                Julia.to_yaml()
             }
         }
         Interval {}
