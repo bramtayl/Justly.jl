@@ -1,0 +1,6 @@
+beat_duration: 0.6 s
+initial_key: 220.0 Hz
+chords:
+  - modulation: "1 for 1"
+    notes:
+      - "3/2 for 1"

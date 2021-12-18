@@ -61,7 +61,19 @@ Column {
                         Julia.release()
                     }
                 }
-                Beats { }
+                Text {
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: " for "
+                }
+                SpinBox {
+                    editable: true
+                    from: -99
+                    value: beats
+                    onValueModified: {
+                        beats = value
+                        Julia.to_yaml()
+                    }
+                }
             }
         }
         ToolSeparator {
