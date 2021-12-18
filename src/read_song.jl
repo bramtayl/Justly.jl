@@ -63,7 +63,7 @@ function read_song(song_file; keyword_arguments...)
     make_schedule(
         from_yamlable(
             Song,
-            load_file(song_file; dicttype = Dict{Symbol, Any});
+            load_file(song_file);
             keyword_arguments...,
         ),
     )

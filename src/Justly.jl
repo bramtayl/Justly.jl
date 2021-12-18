@@ -206,7 +206,7 @@ function edit_song(
     song = if isfile(song_file)
         from_yamlable(
             Song,
-            load_file(song_file; dicttype = Dict{Symbol, Any});
+            load_file(song_file);
             keyword_arguments...,
         )
     else
@@ -287,14 +287,16 @@ function edit_song(
             put!(releases, nothing)
         end
     catch an_error
-        println("QML errored:")
+        # can't error while QML is running, so just message
+        println("Front-end errored:")
         showerror(stdout, an_error)
     finally
         close(presses)
         try
             wait(press_task)
         catch an_error
-            println("Press task errored:")
+            # can't error while QML is running, so just message
+            println("Back-end errored:")
             showerror(stdout, an_error)
         finally
             close(releases)

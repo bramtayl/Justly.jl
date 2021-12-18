@@ -31,36 +31,32 @@ function Chord(;
     Chord(words, modulation, notes)
 end
 
+const MODULATION_NOTES_REGEX = r"(?<modulation>.*)\: (?<notes>.*)"
+
 function from_yamlable(::Type{Chord}, dictionary)
+    modulation = only(setdiff(keys(dictionary), ("words",)))
     Chord(
-        if haskey(dictionary, :words)
-            dictionary[:words]
+        if haskey(dictionary, "words")
+            dictionary["words"]
         else
             ""
         end,
-        from_yamlable(Note, dictionary[:modulation]),
-        if haskey(dictionary, :notes)
-            map(
-                (sub_dictionary -> from_yamlable(Note, sub_dictionary)),
-                dictionary[:notes],
-            )
-        else
-            Note[]
-        end,
+        from_yamlable(Note, modulation),
+        map(
+            (sub_string -> from_yamlable(Note, sub_string)),
+            split(dictionary[modulation], ", ")
+        )
     )
 end
 
 function to_yamlable(chord::Chord)
-    result = Dict{Symbol, Any}()
+    result = Dict{String, Any}()
     words = chord.words
     notes = chord.notes
     if words != ""
-        result[:words] = words
+        result["words"] = words
     end
-    result[:modulation] = to_yamlable(chord.modulation)
-    if !isempty(notes)
-        result[:notes] = map(to_yamlable, notes)
-    end
+    result[to_yamlable(chord.modulation)] = join(map(to_yamlable, notes), ", ")
     result
 end
 

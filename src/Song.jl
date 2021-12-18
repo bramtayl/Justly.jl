@@ -25,10 +25,10 @@ function Song(;
 end
 
 function to_yamlable(song::Song)
-    result = Dict{Symbol, Any}()
-    result[:beat_duration] = song.beat_duration
-    result[:initial_key] = song.initial_key
-    result[:chords] = map(to_yamlable, song.chords)
+    result = Dict{String, Any}()
+    result["beat_duration"] = song.beat_duration
+    result["initial_key"] = song.initial_key
+    result["chords"] = map(to_yamlable, song.chords)
     result
 end
 
@@ -38,11 +38,11 @@ end
 
 function from_yamlable(::Type{Song}, dictionary; keyword_arguments...)
     Song(;
-        beat_duration = parse_unit(dictionary[:beat_duration], s),
-        initial_key = parse_unit(dictionary[:initial_key], Hz),
+        beat_duration = parse_unit(dictionary["beat_duration"], s),
+        initial_key = parse_unit(dictionary["initial_key"], Hz),
         chords = map(
             sub_dictionary -> from_yamlable(Chord, sub_dictionary),
-            dictionary[:chords],
+            dictionary["chords"],
         ),
         keyword_arguments...,
     )
