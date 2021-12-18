@@ -50,8 +50,6 @@ Create an `AudioSchedule` from a song file.
 - `volume`, ranging from 0-1, is the volume that a single voice is played at.
 - `wave` is a function which takes an angle in radians and returns an amplitude between -1 and 1.
 
-Top-level chord lists will be unnested, so you can use YAML anchors to repeat themes.
-
 ```jldoctest make_schedule
 julia> using Justly
 

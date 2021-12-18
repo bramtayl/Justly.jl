@@ -12,8 +12,7 @@ To start Justly, start Julia and run
 
 ```
 using Justly
-chords = Chord[]
-edit_song(chords)
+edit_song("new_song.yml")
 ```
 
 ## How to use Justly
@@ -63,12 +62,9 @@ You can play any note by clicking the play button underneath the note.
 You can play a song, starting with a certain chord, by clicking the play button underneath the chord.
 You can add lyrics, or performance notes, to any chord.
 You can set beats to 0 to overlap, or to a negative number to "travel back in time".
-You can copy the song as YAML on the left.
-You can also import YAML.
-You can convert YAML, or a vector of chords, directly to an `AudioSchedule` using `make_schedule`.
+You can convert YAML directly to an `AudioSchedule` using `read_song`.
 One omits values in the YAML notation if the values are equal to their defaults.
 
 - The default "words" is ""
-- The default "interval" is 1
 - The default "octave" is 0
 - The default "beats" is 1

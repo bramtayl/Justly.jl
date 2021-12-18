@@ -21,6 +21,12 @@ function to_yamlable(io, note::Note)
     print(io, note.beats)
 end
 
+function to_yamlable(note::Note)
+    result = IOBuffer()
+    to_yamlable(result, note)
+    String(take!(result))
+end
+
 # TODO: propertynames?
 
 @inline function getproperty(note::Note, property_name::Symbol)
