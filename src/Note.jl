@@ -15,8 +15,10 @@ function from_yamlable(::Type{Note}, note_string::AbstractString)
     Note(from_yamlable(Interval, a_match["interval"]), parse(Int, a_match["beats"]))
 end
 
-function to_yamlable(note::Note)
-    string(to_yamlable(note.interval), " for ", note.beats)
+function to_yamlable(io, note::Note)
+    to_yamlable(io, note.interval)
+    print(io, " for ")
+    print(io, note.beats)
 end
 
 # TODO: propertynames?

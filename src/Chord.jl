@@ -18,7 +18,7 @@ function Chord(words, modulation, notes)
         words,
         modulation,
         notes,
-        my_list_model(notes, (:numerator, :denominator, :octave, :beats)),
+        property_model(notes, (:numerator, :denominator, :octave, :beats)),
     )
 end
 
@@ -34,7 +34,7 @@ end
 const MODULATION_NOTES_REGEX = r"(?<modulation>.*)\: (?<notes>.*)"
 
 function from_yamlable(::Type{Chord}, dictionary)
-    modulation = only(setdiff(keys(dictionary), ("words",)))
+    modulation = only(Iterators.filter(x -> x != "words", keys(dictionary)))
     Chord(
         if haskey(dictionary, "words")
             dictionary["words"]
@@ -56,7 +56,17 @@ function to_yamlable(chord::Chord)
     if words != ""
         result["words"] = words
     end
-    result[to_yamlable(chord.modulation)] = join(map(to_yamlable, notes), ", ")
+    notes_text = IOBuffer()
+    first_one = true
+    for note in notes
+        if first_one
+            first_one = false
+        else
+            print(notes_text, ", ")
+        end
+        to_yamlable(notes_text, note)
+    end
+    result[to_yamlable(chord.modulation)] = String(take!(notes_text))
     result
 end
 

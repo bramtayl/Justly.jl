@@ -41,7 +41,7 @@ export QML
 const TIME = typeof(0.0s)
 const FREQUENCY = typeof(0.0Hz)
 
-function my_list_model(a_vector, property_names)
+function property_model(a_vector, property_names)
     list_model = ListModel(a_vector, false)
     for property_name in property_names
         addrole(
@@ -256,7 +256,7 @@ function edit_song(
 
     loadqml(
         joinpath(@__DIR__, "Song.qml");
-        chords_model = my_list_model(
+        chords_model = property_model(
             song.chords,
             (:numerator, :denominator, :octave, :beats, :words, :notes_model),
         ),

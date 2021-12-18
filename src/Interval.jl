@@ -39,18 +39,16 @@ function from_yamlable(::Type{Interval}, text::AbstractString)
     )
 end
 
-function to_yamlable(interval::Interval)
-    result = IOBuffer()
+function to_yamlable(io, interval::Interval)
     denominator = interval.denominator
     octave = interval.octave
-    print(result, interval.numerator)
+    print(io, interval.numerator)
     if denominator != 1
-        print(result, '/')
-        print(result, denominator)
+        print(io, '/')
+        print(io, denominator)
     end
     if octave != 0
-        print(result, 'o')
-        print(result, octave)
+        print(io, 'o')
+        print(io, octave)
     end
-    String(take!(result))
 end
