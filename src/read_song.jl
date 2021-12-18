@@ -60,11 +60,13 @@ julia> read_song(joinpath(pkgdir(Justly), "test", "test_song_file.yml"))
 ```
 """
 function read_song(song_file; keyword_arguments...)
-    make_schedule(from_yamlable(
-        Song,
-        load_file(song_file; dicttype = Dict{Symbol, Any});
-        keyword_arguments...
-    ))
+    make_schedule(
+        from_yamlable(
+            Song,
+            load_file(song_file; dicttype = Dict{Symbol, Any});
+            keyword_arguments...,
+        ),
+    )
 end
 
 export read_song

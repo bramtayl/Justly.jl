@@ -52,7 +52,7 @@ function my_list_model(a_vector, property_names)
             end,
             let property_name = property_name
                 (items, value, index) -> setproperty!(items[index], property_name, value)
-            end
+            end,
         )
     end
     setconstructor(list_model, eltype(a_vector))
@@ -197,7 +197,7 @@ function edit_song(
     song_file;
     number_of_tasks = nthreads() - 2,
     test = false,
-    keyword_arguments...
+    keyword_arguments...,
 )
     if nthreads() < 3
         error("Justly needs at least 3 threads to function")
@@ -207,7 +207,7 @@ function edit_song(
         from_yamlable(
             Song,
             load_file(song_file; dicttype = Dict{Symbol, Any});
-            keyword_arguments...
+            keyword_arguments...,
         )
     else
         Song(; keyword_arguments...)
@@ -300,7 +300,7 @@ function edit_song(
             close(releases)
             close(stream)
         end
-    end    
+    end
     nothing
 end
 export edit_song

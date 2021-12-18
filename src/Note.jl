@@ -37,6 +37,10 @@ end
        property_name === :octave
         setproperty!(note.interval, property_name, value)
     else
-        setfield!(note, property_name, convert(fieldtype(typeof(note), property_name), value))
+        setfield!(
+            note,
+            property_name,
+            convert(fieldtype(typeof(note), property_name), value),
+        )
     end
 end

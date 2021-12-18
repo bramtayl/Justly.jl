@@ -85,6 +85,10 @@ end
        property_name === :beats
         setproperty!(chord.modulation, property_name, value)
     else
-        setfield!(chord, property_name, convert(fieldtype(typeof(chord), property_name), value))
+        setfield!(
+            chord,
+            property_name,
+            convert(fieldtype(typeof(chord), property_name), value),
+        )
     end
 end

@@ -10,21 +10,14 @@ mutable struct Song{Wave, MakeEnvelope}
     chords::Vector{Chord}
 end
 
-const DEFAULT_WAVE = SawTooth(7)
-const DEFAULT_MAKE_ENVELOPE = pedal
-const DEFAULT_BEAT_DURATION = 0.3s
-const DEFAULT_RAMP = 0.1s
-const DEFAULT_SAMPLE_RATE = 44100.0Hz
-const DEFAULT_VOLUME = 0.1
-
 function Song(;
-    wave = DEFAULT_WAVE,
-    make_envelope = DEFAULT_MAKE_ENVELOPE,
+    wave = SawTooth(7),
+    make_envelope = pedal,
     beat_duration = 0.3s,
     initial_key = 220.0Hz,
-    ramp = DEFAULT_RAMP,
-    sample_rate = DEFAULT_SAMPLE_RATE,
-    volume = DEFAULT_VOLUME,
+    ramp = 0.1s,
+    sample_rate = 44100.0Hz,
+    volume = 0.1,
     # need to allocate a new vector
     chords = Chord[],
 )
@@ -43,16 +36,15 @@ function parse_unit(a_string, unit)
     parse(Float64, match(Regex("(.*) $unit"), a_string)[1])unit
 end
 
-function from_yamlable(
-    ::Type{Song},
-    dictionary;
-    keyword_arguments...
-)
+function from_yamlable(::Type{Song}, dictionary; keyword_arguments...)
     Song(;
         beat_duration = parse_unit(dictionary[:beat_duration], s),
         initial_key = parse_unit(dictionary[:initial_key], Hz),
-        chords = map(sub_dictionary -> from_yamlable(Chord, sub_dictionary), dictionary[:chords]),
-        keyword_arguments...
+        chords = map(
+            sub_dictionary -> from_yamlable(Chord, sub_dictionary),
+            dictionary[:chords],
+        ),
+        keyword_arguments...,
     )
 end
 
