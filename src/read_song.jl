@@ -56,7 +56,7 @@ Top-level chord lists will be unnested, so you can use YAML anchors to repeat th
 julia> using Justly
 
 julia> read_song(joinpath(pkgdir(Justly), "test", "test_song_file.yml"))
-0.65 s 44100.0 Hz AudioSchedule
+0.55 s 44100.0 Hz AudioSchedule
 ```
 """
 function read_song(song_file; keyword_arguments...)

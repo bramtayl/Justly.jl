@@ -1,4 +1,5 @@
-beat_duration: 0.6 s
+beat_duration: 0.05 s
 initial_key: 220.0 Hz
 chords:
-  - "1 for 1": "3/2 for 1"
+  - words: "first chord"
+    "1 for 1": "1 for 1, 3/2 for 10"
