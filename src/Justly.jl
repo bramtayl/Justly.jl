@@ -183,7 +183,7 @@ The interface might be slow at first while Julia is compiling.
 - `song_file` is a YAML string or a vector of [`Chord`](@refs)s. Will be created if it doesn't exist.
 - `number_of_tasks` is the number of tasks to use to process data. Defaults to 2 less than the number of threads; we need 1 master thread for QML and 1 master thread for AudioSchedules.
 - If `test` is true, will open the editor briefly to test it.
-- `keyword_arguments` will be passed to [`read_song`](@ref).
+- `keyword_arguments` will be passed to [`read_justly`](@ref).
 
 For more information, see the `README`.
 
