@@ -1,3 +1,4 @@
+
 mutable struct Note
     interval::Interval
     beats::Int
@@ -10,21 +11,15 @@ end
 
 const NOTE_REGEX = r"(?<interval>.*) for (?<beats>.*)"
 
-function from_yamlable(::Type{Note}, note_string::AbstractString)
+function parse(::Type{Note}, note_string::AbstractString)
     a_match = match(NOTE_REGEX, note_string)
-    Note(from_yamlable(Interval, a_match["interval"]), parse(Int, a_match["beats"]))
+    Note(parse(Interval, a_match["interval"]), parse(Int, a_match["beats"]))
 end
 
-function to_yamlable(io, note::Note)
-    to_yamlable(io, note.interval)
+function print(io::IO, note::Note)
+    print(io, note.interval)
     print(io, " for ")
     print(io, note.beats)
-end
-
-function to_yamlable(note::Note)
-    result = IOBuffer()
-    to_yamlable(result, note)
-    String(take!(result))
 end
 
 # TODO: propertynames?
@@ -41,7 +36,7 @@ end
 
 @inline function setproperty!(note::Note, property_name::Symbol, value)
     if property_name === :numerator ||
-       property_name === :denominator ||
+       property_nam_justlye === :denominator ||
        property_name === :octave
         setproperty!(note.interval, property_name, value)
     else

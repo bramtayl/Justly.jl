@@ -16,7 +16,7 @@ function Rational(interval::Interval)
 end
 
 # TODO: reuse from AudioSchedules
-function from_yamlable(::Type{Interval}, text::AbstractString)
+function parse(::Type{Interval}, text::AbstractString)
     a_match = match(QUOTIENT, text)
     if a_match === nothing
         throw(Meta.ParseError("Can't parse interval $text"))
@@ -39,7 +39,7 @@ function from_yamlable(::Type{Interval}, text::AbstractString)
     )
 end
 
-function to_yamlable(io, interval::Interval)
+function print(io::IO, interval::Interval)
     denominator = interval.denominator
     octave = interval.octave
     print(io, interval.numerator)

@@ -1,8 +1,8 @@
 module Justly
 
+import AudioSchedules: AudioSchedule
 using AudioSchedules:
     add!,
-    AudioSchedule,
     Cycles,
     fill_all_task_ios,
     Hook,
@@ -15,7 +15,7 @@ using AudioSchedules:
     Weaver,
     write_buffer,
     write_series!
-import Base: getproperty, Rational, setproperty!, show
+import Base: getproperty, parse, print, Rational, setproperty!, show
 using Base.Threads: nthreads, @spawn
 using PortAudio: PortAudioStream
 using QML:
@@ -84,10 +84,10 @@ include("Interval.jl")
 include("Note.jl")
 include("Chord.jl")
 include("Song.jl")
-include("read_song.jl")
+include("AudioSchedule.jl")
 
 function precompile_song(task_ios, song, buffer)
-    for (series, _) in make_schedule(song)
+    for (series, _) in AudioSchedule(song)
         write_series!(task_ios, series, 1, buffer, 0)
     end
 end
@@ -133,7 +133,7 @@ function press!(task_ios, song, presses, releases, buffer)
         buffer_at = 0
         if voice_index < 0
             precompile_song(task_ios, song, buffer)
-            for (series, series_total) in make_schedule(
+            for (series, series_total) in AudioSchedule(
                 song;
                 chords = (@view song.chords[(chord_index + 1):end]),
                 initial_key = update_key(song, chord_index - 1),
@@ -190,7 +190,7 @@ For more information, see the `README`.
 ```jldoctest
 julia> using Justly
 
-julia> edit_song(joinpath(pkgdir(Justly), "test", "test_song_file.yml"); test = true)
+julia> edit_song(joinpath(pkgdir(Justly), "test", "test_song_file.justly"); test = true)
 ```
 """
 function edit_song(
@@ -204,11 +204,7 @@ function edit_song(
     end
 
     song = if isfile(song_file)
-        from_yamlable(
-            Song,
-            load_file(song_file);
-            keyword_arguments...,
-        )
+        read_justly(song_file; keyword_arguments...)
     else
         Song(; keyword_arguments...)
     end
@@ -250,8 +246,12 @@ function edit_song(
         () -> put!(releases, nothing)
     end)
 
-    qmlfunction("to_yaml", let song_file = song_file, song = song
-        () -> write_file(song_file, to_yamlable(song))
+    print_function = let song = song
+        io -> print(io, song)
+    end
+
+    qmlfunction("to_yaml", let song_file = song_file, print_function = print_function
+        () -> open(print_function, song_file, write = true)
     end)
 
     loadqml(

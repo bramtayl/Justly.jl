@@ -1,9 +1,3 @@
-
-"""
-mutable struct Chord
-
-A Julia representation of a chord. Pass a vector of `Chord`s to [`edit_song`](@ref).
-"""
 mutable struct Chord
     words::String
     modulation::Note
@@ -31,43 +25,40 @@ function Chord(;
     Chord(words, modulation, notes)
 end
 
-const MODULATION_NOTES_REGEX = r"(?<modulation>.*)\: (?<notes>.*)"
+const CHORD_REGEX = r"(?:(?<words>.*) # )?(?<modulation>.*): (?<notes>.*)"
 
-function from_yamlable(::Type{Chord}, dictionary)
-    modulation = only(Iterators.filter(x -> x != "words", keys(dictionary)))
+function parse(::Type{Chord}, text::AbstractString)
+    a_match = match(CHORD_REGEX, text)
     Chord(
-        if haskey(dictionary, "words")
-            dictionary["words"]
-        else
-            ""
-        end,
-        from_yamlable(Note, modulation),
-        map(
-            (sub_string -> from_yamlable(Note, sub_string)),
-            split(dictionary[modulation], ", ")
+        words = something(a_match["words"], ""),
+        modulation = parse(Note, a_match["modulation"]),
+        notes = map(
+            (sub_string -> parse(Note, sub_string)),
+            split(a_match["notes"], ", ")
         )
     )
 end
 
-function to_yamlable(chord::Chord)
-    result = Dict{String, Any}()
+const MODULATION_NOTES_REGEX = r"(?<modulation>.*)\: (?<notes>.*)"
+
+function print(io::IO, chord::Chord)
     words = chord.words
-    notes = chord.notes
     if words != ""
-        result["words"] = words
+        print(io, words)
+        print(io, " # ")
     end
-    notes_text = IOBuffer()
+    print(io, chord.modulation)
+    print(io, ": ")
     first_one = true
-    for note in notes
+    for note in chord.notes
         if first_one
             first_one = false
         else
-            print(notes_text, ", ")
+            print(io, ", ")
         end
-        to_yamlable(notes_text, note)
+        print(io, note)
     end
-    result[to_yamlable(chord.modulation)] = String(take!(notes_text))
-    result
+    println(io)
 end
 
 # TODO: propertynames?
