@@ -8,7 +8,6 @@ using AudioSchedules:
     Hook,
     Line,
     Map,
-    QUOTIENT,
     SawTooth,
     Scale,
     triples,
@@ -16,6 +15,7 @@ using AudioSchedules:
     write_buffer,
     write_series!
 import Base: getproperty, parse, print, Rational, setproperty!, show
+using Base.Meta: ParseError
 using Base.Threads: nthreads, @spawn
 using PortAudio: PortAudioStream
 using QML:
@@ -50,8 +50,14 @@ function property_model(a_vector, property_names)
             let property_name = property_name
                 item -> getproperty(item, property_name)
             end,
-            let property_name = property_name
-                (items, value, index) -> setproperty!(items[index], property_name, value)
+            let property_name = property_name, stdout = stdout
+                (items, value, index) -> 
+                    try 
+                        setproperty!(items[index], property_name, value)
+                    catch an_error
+                        # errors will be ignored, so print them at least
+                        showerror(stdout, an_error)
+                    end
             end,
         )
     end
@@ -79,6 +85,10 @@ function pedal(duration; slope = 1 / 0.1s, peak = 1, overlap = 1 / 2)
     end
 end
 export pedal
+
+function throw_parse_error(text, description, line_number)
+    throw(ParseError(string("Can't parse $text as $description on line $line_number")))
+end
 
 include("Interval.jl")
 include("Note.jl")
@@ -190,7 +200,7 @@ For more information, see the `README`.
 ```jldoctest
 julia> using Justly
 
-julia> edit_song(joinpath(pkgdir(Justly), "test", "test_song_file.justly"); test = true)
+julia> edit_song(joinpath(pkgdir(Justly), "test", "song.justly"); test = true)
 ```
 """
 function edit_song(

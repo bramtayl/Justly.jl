@@ -25,27 +25,32 @@ function Chord(;
     Chord(words, modulation, notes)
 end
 
-const CHORD_REGEX = r"(?:(?<words>.*) # )?(?<modulation>.*): (?<notes>.*)"
+const CHORD_REGEX = r"(?<modulation>.*): (?<notes>.*)"
 
-function parse(::Type{Chord}, text::AbstractString)
+function parse(::Type{Chord}, text::AbstractString; line_number, words = "")
     a_match = match(CHORD_REGEX, text)
-    Chord(
-        words = something(a_match["words"], ""),
-        modulation = parse(Note, a_match["modulation"]),
-        notes = map(
-            (sub_string -> parse(Note, sub_string)),
-            split(a_match["notes"], ", ")
+    if a_match === nothing
+        throw_parse_error(text, "chord", line_number)
+    else
+        Chord(
+            words = words,
+            modulation = parse(Note, a_match["modulation"]; line_number = line_number),
+            notes = map(
+                let line_number = line_number
+                    (sub_string -> parse(Note, sub_string; line_number = line_number))
+                end,
+                split(a_match["notes"], ", ")
+            )
         )
-    )
+    end
 end
-
-const MODULATION_NOTES_REGEX = r"(?<modulation>.*)\: (?<notes>.*)"
 
 function print(io::IO, chord::Chord)
     words = chord.words
     if words != ""
+        print(io, "# ")
         print(io, words)
-        print(io, " # ")
+        println(io)
     end
     print(io, chord.modulation)
     print(io, ": ")

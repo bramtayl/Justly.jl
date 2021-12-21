@@ -15,28 +15,46 @@ function Rational(interval::Interval)
     interval.numerator // interval.denominator * (2 // 1)^interval.octave
 end
 
+const INTERVAL_REGEX = r"(?<numerator>[^/o]+)(?:/(?<denominator>[^o]+))?(?:o(?<octave>.+))?"
+
 # TODO: reuse from AudioSchedules
-function parse(::Type{Interval}, text::AbstractString)
-    a_match = match(QUOTIENT, text)
+function parse(::Type{Interval}, text::AbstractString; line_number)
+    a_match = match(INTERVAL_REGEX, text)
     if a_match === nothing
-        throw(Meta.ParseError("Can't parse interval $text"))
+        throw_parse_error(text, "interval", line_number)
+    else
+        numerator_string = a_match["numerator"]
+        numerator = tryparse(Int, numerator_string)
+        denominator_string = a_match["denominator"]
+        octave_string = a_match["octave"]
+        Interval(
+            if numerator === nothing
+                throw_parse_error(numerator_string, "numerator", line_number)
+            else
+                numerator
+            end,
+            if denominator_string === nothing
+                1
+            else
+                denominator = tryparse(Int, denominator_string)
+                if denominator === nothing
+                    throw_parse_error(denominator_string, "denominator", line_number)
+                else
+                    denominator
+                end
+            end,
+            if octave_string === nothing
+                0
+            else
+                octave = tryparse(Int, octave_string)
+                if octave === nothing
+                    throw_parse_error(octave_string, "octave", line_number)
+                else
+                    octave
+                end
+            end,
+        )
     end
-    numerator_string = a_match["numerator"]
-    denominator_string = a_match["denominator"]
-    octave_string = a_match["octave"]
-    Interval(
-        parse(Int, numerator_string),
-        if denominator_string === nothing
-            1
-        else
-            parse(Int, denominator_string)
-        end,
-        if octave_string === nothing
-            0
-        else
-            parse(Int, octave_string)
-        end,
-    )
 end
 
 function print(io::IO, interval::Interval)

@@ -55,6 +55,7 @@ ApplicationWindow {
         }
         ScrollView {
             width: parent.width
+            ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
             height: parent.height - options_bar.height
             clip: true
             ListView {

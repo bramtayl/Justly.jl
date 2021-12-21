@@ -11,9 +11,19 @@ end
 
 const NOTE_REGEX = r"(?<interval>.*) for (?<beats>.*)"
 
-function parse(::Type{Note}, note_string::AbstractString)
-    a_match = match(NOTE_REGEX, note_string)
-    Note(parse(Interval, a_match["interval"]), parse(Int, a_match["beats"]))
+function parse(::Type{Note}, text::AbstractString; line_number = line_number)
+    a_match = match(NOTE_REGEX, text)
+    if a_match === nothing
+        throw_parse_error(text, "note", line_number)
+    else
+        beats_string = a_match["beats"]
+        beats = tryparse(Int, beats_string)
+        if beats === nothing
+            throw_parse_error(beats_string, "beats", line_number)
+        else
+            Note(parse(Interval, a_match["interval"]; line_number = line_number), beats)
+        end
+    end
 end
 
 function print(io::IO, note::Note)
@@ -36,7 +46,7 @@ end
 
 @inline function setproperty!(note::Note, property_name::Symbol, value)
     if property_name === :numerator ||
-       property_nam_justlye === :denominator ||
+       property_name === :denominator ||
        property_name === :octave
         setproperty!(note.interval, property_name, value)
     else

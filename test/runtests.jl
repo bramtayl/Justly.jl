@@ -1,7 +1,28 @@
 using Justly
+using Justly: Song, Chord, Note, Interval
 using Documenter: doctest
-using Test: @test_throws
+using Test: @test, @test_throws, @testset
+using AudioSchedules: AudioSchedule, duration
+using Base.Meta: ParseError
+using Unitful: s
 
-@test_throws Base.Meta.ParseError("Can't parse interval a") parse(Justly.Interval, "a")
+cd(joinpath(pkgdir(Justly), "test")) do
+    edit_song("song.justly"; test = true)
+    song = read_justly("song.justly")
+    @test length(song.chords[1].notes) == 2
+    @test duration(AudioSchedule(song)) == 0.8s
 
-doctest(Justly)
+    @testset "parsing" begin
+        @test_throws ParseError("Can't parse ? as beats on line 3") read_justly("bad_beats.justly")
+        @test_throws ParseError("Can't parse ? as chord on line 3") read_justly("bad_chord.justly")
+        @test_throws ParseError("Can't parse ? as denominator on line 3") read_justly("bad_denominator.justly")
+        @test_throws ParseError("Can't parse o as interval on line 3") read_justly("bad_interval.justly")
+        @test_throws ParseError("Can't parse ? as note on line 3") read_justly("bad_note.justly")
+        @test_throws ParseError("Can't parse ? as numerator on line 3") read_justly("bad_numerator.justly")
+        @test_throws ParseError("Can't parse ? as octave on line 3") read_justly("bad_octave.justly")
+    end
+end
+
+if v"1.6" <= VERSION < v"1.7"
+    doctest(Justly)
+end

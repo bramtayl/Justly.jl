@@ -36,6 +36,7 @@ function print(io::IO, song::Song)
 end
 
 const INTRO_REGEX = r"(?<initial_key>.*) Hz; (?<tempo>.*) bpm"
+const WORDS_REGEX = r"# (?<words>.*)"
 
 """
     function read_justly(song_file;
@@ -57,11 +58,12 @@ Create a `Song` from a song file.
 ```jldoctest read_justly
 julia> using Justly
 
-julia> song = read_justly(joinpath(pkgdir(Justly), "test", "test_song_file.justly"));
+julia> song = read_justly(joinpath(pkgdir(Justly), "test", "song.justly"));
 
 julia> print(song)
 220.0 Hz; 800.0 bpm
-first chord # 1 for 1: 1 for 1, 3/2 for 10
+# first chord
+1 for 1: 1 for 1, 3/2o1 for 10
 ```
 
 You can create an `AudioSchedule` from a song.
@@ -78,14 +80,24 @@ function read_justly(file; keyword_arguments...)
     chords = song.chords
     open(file) do io
         first_one = true
-        for line in eachline(io)
-            if first_one
-                a_match = match(INTRO_REGEX, line)
-                song.initial_key = parse(Float64, a_match["initial_key"])Hz
-                song.beat_duration = 60s / parse(Float64, a_match["tempo"])
-                first_one = false
-            else
-                push!(chords, parse(Chord, line))
+        words = ""
+        for (line_number, line) in enumerate(eachline(io))
+            if !isempty(line)
+                if first_one
+                    a_match = match(INTRO_REGEX, line)
+                    song.initial_key = parse(Float64, a_match["initial_key"])Hz
+                    song.beat_duration = 60s / parse(Float64, a_match["tempo"])
+                    first_one = false
+                else
+                    words_match = match(WORDS_REGEX, line)
+                    if words_match === nothing
+                        push!(chords, parse(Chord, line; line_number = line_number, words = words))
+                        words = ""
+                    else
+                        words = words_match["words"]
+                    end
+                end
+
             end
         end
     end
