@@ -38,6 +38,51 @@ end
 const INTRO_REGEX = r"(?<initial_key>.*) Hz; (?<tempo>.*) bpm"
 const WORDS_REGEX = r"# (?<words>.*)"
 
+function add_initial_key_and_tempo!(song, line_number, line)
+    a_match = match(INTRO_REGEX, line)
+    if a_match === nothing
+        throw_parse_error(line, "initial key and tempo", line_number)
+    else
+        initial_key_text = a_match["initial_key"]
+        initial_key = tryparse(Float64, initial_key_text)
+        if initial_key === nothing
+            throw_parse_error(initial_key_text, "initial key", line_number)
+        else
+            song.initial_key = (initial_key)Hz
+        end
+        tempo_text = a_match["tempo"]
+        tempo = tryparse(Float64, tempo_text)
+        if tempo === nothing
+            throw_parse_error(tempo_text, "tempo", line_number)
+        else
+            song.beat_duration = 60s / tempo
+        end
+    end
+    nothing
+end
+
+function read_justly!(io, song)
+    chords = song.chords
+    first_one = true
+    words = ""
+    for (line_number, line) in enumerate(eachline(io))
+        if !isempty(line)
+            if first_one
+                add_initial_key_and_tempo!(song, line_number, line)
+                first_one = false
+            else
+                words_match = match(WORDS_REGEX, line)
+                if words_match === nothing
+                    push!(chords, parse(Chord, line; line_number = line_number, words = words))
+                    words = ""
+                else
+                    words = words_match["words"]
+                end
+            end
+        end
+    end
+end
+
 """
     function read_justly(song_file;
         wave = SawTooth(7),
@@ -77,30 +122,12 @@ julia> AudioSchedule(song)
 """
 function read_justly(file; keyword_arguments...)
     song = Song(; keyword_arguments...)
-    chords = song.chords
-    open(file) do io
-        first_one = true
-        words = ""
-        for (line_number, line) in enumerate(eachline(io))
-            if !isempty(line)
-                if first_one
-                    a_match = match(INTRO_REGEX, line)
-                    song.initial_key = parse(Float64, a_match["initial_key"])Hz
-                    song.beat_duration = 60s / parse(Float64, a_match["tempo"])
-                    first_one = false
-                else
-                    words_match = match(WORDS_REGEX, line)
-                    if words_match === nothing
-                        push!(chords, parse(Chord, line; line_number = line_number, words = words))
-                        words = ""
-                    else
-                        words = words_match["words"]
-                    end
-                end
-
-            end
-        end
-    end
+    open(
+        let song = song
+            io -> read_justly!(io, song)
+        end,
+        file
+    )
     song
 end
 

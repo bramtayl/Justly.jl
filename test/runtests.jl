@@ -20,6 +20,9 @@ cd(joinpath(pkgdir(Justly), "test")) do
         @test_throws ParseError("Can't parse ? as note on line 3") read_justly("bad_note.justly")
         @test_throws ParseError("Can't parse ? as numerator on line 3") read_justly("bad_numerator.justly")
         @test_throws ParseError("Can't parse ? as octave on line 3") read_justly("bad_octave.justly")
+        @test_throws ParseError("Can't parse ? as tempo on line 1") read_justly("bad_tempo.justly")
+        @test_throws ParseError("Can't parse ? as initial key on line 1") read_justly("bad_initial_key.justly")
+        @test_throws ParseError("Can't parse ? as initial key and tempo on line 1") read_justly("bad_initial_key_and_tempo.justly")
     end
 end
 

@@ -13,11 +13,10 @@ ApplicationWindow {
     property int default_spacing: 5
     property string add_text: "+"
     property string remove_text: "−"
-    Column {
+    ColumnLayout {
         height: parent.height
         width: parent.width
         Row {
-            id: options_bar
             Column {
                 Text {
                     text: "Tempo: " + beats_per_minute_slider.value.toFixed(0) + "bpm"
@@ -54,9 +53,9 @@ ApplicationWindow {
             }
         }
         ScrollView {
-            width: parent.width
+            Layout.fillHeight: true
+            Layout.fillWidth: true
             ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
-            height: parent.height - options_bar.height
             clip: true
             ListView {
                 id: chords_view
