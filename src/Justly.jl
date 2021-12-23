@@ -143,6 +143,7 @@ function press!(task_ios, song, presses, releases, buffer)
         buffer_at = 0
         if voice_index < 0
             precompile_song(task_ios, song, buffer)
+            Base.GC.enable(false)
             for (series, series_total) in AudioSchedule(
                 song;
                 chords = (@view song.chords[(chord_index + 1):end]),
@@ -153,7 +154,11 @@ function press!(task_ios, song, presses, releases, buffer)
                 end
                 buffer_at = write_series!(task_ios, series, series_total, buffer, buffer_at)
             end
+            write_buffer(buffer, buffer_at)
+            Base.GC.enable(true)
+            take!(releases)
         else
+            Base.GC.enable(false)
             # all three will be pairs of iterators and number of frames
             (ramp_up, sustain, ramp_down) = get_dummy_envelope(
                 song,
@@ -161,13 +166,11 @@ function press!(task_ios, song, presses, releases, buffer)
                 Rational(song.chords[chord_index + 1].notes[voice_index + 1].interval),
             )
             buffer_at = write_series!(task_ios, ramp_up..., buffer, buffer_at)
-            while !isready(releases)
-                buffer_at = write_series!(task_ios, sustain..., buffer, buffer_at)
-            end
+            buffer_at = write_series!(task_ios, sustain..., buffer, buffer_at)
             buffer_at = write_series!(task_ios, ramp_down..., buffer, buffer_at)
+            write_buffer(buffer, buffer_at)
+            Base.GC.enable(true)
         end
-        write_buffer(buffer, buffer_at)
-        take!(releases)
     end
 end
 

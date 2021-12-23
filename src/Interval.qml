@@ -14,7 +14,6 @@ Row {
             value: numerator
             onValueModified: {
                 numerator = value
-                Julia.to_yaml()
             }
         }
         ToolSeparator {
@@ -27,7 +26,6 @@ Row {
             editable: true
             onValueModified: {
                 denominator = value
-                Julia.to_yaml()
             }
         }
     }
@@ -41,7 +39,6 @@ Row {
         value: octave
         onValueModified: {
             octave = value
-            Julia.to_yaml()
         }
     }
 }

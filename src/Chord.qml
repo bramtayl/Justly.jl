@@ -13,7 +13,6 @@ Column {
         text: add_text
         onClicked: {
             chords_model.insert(index, [])
-            Julia.to_yaml()
         }
     }
     RowLayout {
@@ -25,7 +24,6 @@ Column {
             implicitHeight: button_side
             onClicked: {
                 chords_model.remove(index)
-                Julia.to_yaml()
             }
         }
         Column {
@@ -35,7 +33,6 @@ Column {
                 text: words
                 onEditingFinished: {
                     words = text
-                    Julia.to_yaml()
                 }
             }
             Row {
@@ -71,7 +68,6 @@ Column {
                     value: beats
                     onValueModified: {
                         beats = value
-                        Julia.to_yaml()
                     }
                 }
             }
@@ -94,7 +90,6 @@ Column {
                 text: add_text
                 onClicked: {
                     notes_model.append([])
-                    Julia.to_yaml()
                 }
             }
             snapMode: ListView.SnapToItem

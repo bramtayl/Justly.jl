@@ -32,15 +32,20 @@ function parse(::Type{Chord}, text::AbstractString; line_number, words = "")
     if a_match === nothing
         throw_parse_error(text, "chord", line_number)
     else
+        notes_string = a_match["notes"]
         Chord(
             words = words,
             modulation = parse(Note, a_match["modulation"]; line_number = line_number),
-            notes = map(
-                let line_number = line_number
-                    (sub_string -> parse(Note, sub_string; line_number = line_number))
-                end,
-                split(a_match["notes"], ", ")
-            )
+            notes = if notes_string == ""
+                Note[]
+            else
+                map(
+                    let line_number = line_number
+                        (sub_string -> parse(Note, sub_string; line_number = line_number))
+                    end,
+                    split(a_match["notes"], ", ")
+                )
+            end
         )
     end
 end

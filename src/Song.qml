@@ -28,7 +28,6 @@ ApplicationWindow {
                     to: 800
                     onMoved: {
                         Julia.update_beats_per_minute(value)
-                        Julia.to_yaml()
                     }
                 }
             }
@@ -43,7 +42,6 @@ ApplicationWindow {
                     snapMode: Slider.SnapAlways
                     onMoved: {
                         Julia.update_initial_midi_code(value)
-                        Julia.to_yaml()
                     }
                     stepSize: 1
                     from: 36
@@ -72,11 +70,13 @@ ApplicationWindow {
                     font.pointSize: button_text_size
                     onClicked: {
                         chords_model.append([])
-                        Julia.to_yaml()
                     }
                 }
             }
         }
+    }
+    onClosing: {
+        Julia.to_yaml()
     }
     Timer {
         running: test

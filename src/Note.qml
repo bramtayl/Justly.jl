@@ -36,12 +36,6 @@ Row {
                 onPressed: {
                     Julia.press(chord_index, index)
                 }
-                onCanceled: {
-                    Julia.release()
-                }
-                onReleased: {
-                    Julia.release()
-                }
             }
             Text {
                 anchors.verticalCenter: parent.verticalCenter
