@@ -132,13 +132,6 @@ function update_key(song, chord_index)
 end
 
 function press!(task_ios, song, presses, releases, buffer)
-    (ramp_up, sustain, ramp_down) = get_dummy_envelope(song, 440.0Hz)
-    # each is a pair of waves and number of samples
-    # set the first index of the buffer to match each wave
-    write_series!(task_ios, ramp_up[1], 1, buffer, 0)
-    write_series!(task_ios, sustain[1], 1, buffer, 0)
-    write_series!(task_ios, ramp_down[1], 1, buffer, 0)
-    precompile_song(task_ios, song, buffer)
     for (chord_index, voice_index) in presses
         buffer_at = 0
         if voice_index < 0
@@ -278,6 +271,13 @@ function edit_song(
     stream = PortAudioStream(0, 1, writer = Weaver(); warn_xruns = false)
     buffer = stream.sink_messanger.buffer
     task_ios = fill_all_task_ios(buffer; number_of_tasks = number_of_tasks)
+    (ramp_up, sustain, ramp_down) = get_dummy_envelope(song, 440.0Hz)
+    # each is a pair of waves and number of samples
+    # set the first index of the buffer to match each wave
+    write_series!(task_ios, ramp_up[1], 1, buffer, 0)
+    write_series!(task_ios, sustain[1], 1, buffer, 0)
+    write_series!(task_ios, ramp_down[1], 1, buffer, 0)
+    precompile_song(task_ios, song, buffer)
     press_task = Task(
         let task_ios = task_ios,
             song = song,
