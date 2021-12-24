@@ -3,10 +3,7 @@ import QtQuick.Controls 2.15
 import org.julialang 1.0
 
 Row {
-    Button {
-        font.pointSize: button_text_size
-        implicitWidth: button_side
-        implicitHeight: button_side
+    SmallButton {
         text: "+"
         onClicked: {
             notes_model.insert(index, [])
@@ -14,11 +11,8 @@ Row {
         }
     }
     Column {
-        spacing: default_spacing
-        Button {
-            font.pointSize: button_text_size
-            implicitWidth: button_side
-            implicitHeight: button_side
+        spacing: small_spacing
+        SmallButton {
             anchors.horizontalCenter: parent.horizontalCenter
             text: remove_text
             onClicked: {
@@ -28,10 +22,7 @@ Row {
         }
         Interval {}
         Row {
-            Button {
-                font.pointSize: button_text_size
-                implicitWidth: button_side
-                implicitHeight: button_side
+            SmallButton {
                 text: "▶️"
                 onPressed: {
                     Julia.press(chord_index, index)
@@ -41,8 +32,7 @@ Row {
                 anchors.verticalCenter: parent.verticalCenter
                 text: " for "
             }
-            SpinBox {
-                editable: true
+            SmallSpinBox {
                 from: -99
                 value: beats
                 onValueModified: {

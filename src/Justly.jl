@@ -260,14 +260,6 @@ function edit_song(
         () -> open(print_function, song_file, write = true)
     end)
 
-    loadqml(
-        joinpath(@__DIR__, "Song.qml");
-        chords_model = property_model(
-            song.chords,
-            (:numerator, :denominator, :octave, :beats, :words, :notes_model),
-        ),
-        test = test,
-    )
     stream = PortAudioStream(0, 1, writer = Weaver(); warn_xruns = false)
     buffer = stream.sink_messanger.buffer
     task_ios = fill_all_task_ios(buffer; number_of_tasks = number_of_tasks)
@@ -278,6 +270,14 @@ function edit_song(
     write_series!(task_ios, sustain[1], 1, buffer, 0)
     write_series!(task_ios, ramp_down[1], 1, buffer, 0)
     precompile_song(task_ios, song, buffer)
+    loadqml(
+        joinpath(@__DIR__, "Song.qml");
+        chords_model = property_model(
+            song.chords,
+            (:numerator, :denominator, :octave, :beats, :words, :notes_model),
+        ),
+        test = test,
+    )
     press_task = Task(
         let task_ios = task_ios,
             song = song,

@@ -6,10 +6,7 @@ import org.julialang 1.0
 Column {
     property int chord_index: index
     width: chords_view.width
-    Button {
-        font.pointSize: button_text_size
-        implicitWidth: button_side
-        implicitHeight: button_side
+    SmallButton {
         text: add_text
         onClicked: {
             chords_model.insert(index, [])
@@ -17,23 +14,22 @@ Column {
     }
     RowLayout {
         width: parent.width
-        Button {
-            font.pointSize: button_text_size
+        SmallButton {
             text: remove_text
-            implicitWidth: button_side
-            implicitHeight: button_side
             onClicked: {
                 chords_model.remove(index)
             }
         }
         Column {
             id: modulation
-            spacing: default_spacing
+            spacing: small_spacing
             TextField {
                 text: words
                 onEditingFinished: {
                     words = text
                 }
+                height: small_height
+                width: parent.width
             }
             Row {
                 Text {
@@ -43,10 +39,7 @@ Column {
                 Interval { }
             }
             Row {
-                Button {
-                    font.pointSize: button_text_size
-                    implicitWidth: button_side
-                    implicitHeight: button_side
+                SmallButton {
                     text: "▶️"
                     onPressed: {
                         Julia.press(index, -1)
@@ -54,6 +47,7 @@ Column {
                     onReleased: {
                         Julia.release()
                     }
+                    // this doesn't seem to work?
                     onCanceled: {
                         Julia.release()
                     }
@@ -62,8 +56,7 @@ Column {
                     anchors.verticalCenter: parent.verticalCenter
                     text: " for "
                 }
-                SpinBox {
-                    editable: true
+                SmallSpinBox {
                     from: -99
                     value: beats
                     onValueModified: {
@@ -78,15 +71,11 @@ Column {
         ListView {
             id: notes
             Layout.fillWidth: true
-            // notes are slightly taller than modulations
             implicitHeight: contentItem.childrenRect.height
             orientation: ListView.Horizontal
             model: notes_model
             delegate: Note { }
-            footer: Button {
-                implicitWidth: button_side
-                implicitHeight: button_side
-                font.pointSize: button_text_size
+            footer: SmallButton {
                 text: add_text
                 onClicked: {
                     notes_model.append([])

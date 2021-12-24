@@ -8,8 +8,7 @@ Row {
         text: "key × "
     }
     Column {
-        SpinBox {
-            editable: true
+        SmallSpinBox {
             from: 1
             value: numerator
             onValueModified: {
@@ -20,10 +19,9 @@ Row {
             orientation: Qt.Horizontal
             width: parent.width
         }
-        SpinBox {
+        SmallSpinBox {
             from: 1
             value: denominator
-            editable: true
             onValueModified: {
                 denominator = value
             }
@@ -33,8 +31,7 @@ Row {
         anchors.verticalCenter: parent.verticalCenter
         text: " × 2 "
     }
-    SpinBox {
-        editable: true
+    SmallSpinBox {
         from: -99
         value: octave
         onValueModified: {

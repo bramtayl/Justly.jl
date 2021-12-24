@@ -8,9 +8,9 @@ ApplicationWindow {
     visible: true
     id: window
     color: "white"
-    property int button_side: 40
-    property int button_text_size: 16
-    property int default_spacing: 5
+    property int small_height: 25
+    property int small_width: 35
+    property int small_spacing: 5
     property string add_text: "+"
     property string remove_text: "−"
     ColumnLayout {
@@ -50,28 +50,22 @@ ApplicationWindow {
                 }
             }
         }
-        ScrollView {
+        ListView {
+            id: chords_view
             Layout.fillHeight: true
             Layout.fillWidth: true
-            ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
             clip: true
-            ListView {
-                id: chords_view
-                height: parent.height
-                width: parent.width
-                clip: true
-                model: chords_model
-                snapMode: ListView.SnapToItem
-                delegate: Chord { }
-                footer: Button {
-                    implicitWidth: button_side
-                    implicitHeight: button_side
-                    text: add_text
-                    font.pointSize: button_text_size
-                    onClicked: {
-                        chords_model.append([])
-                    }
+            model: chords_model
+            snapMode: ListView.SnapToItem
+            delegate: Chord { }
+            footer: SmallButton {
+                text: add_text
+                onClicked: {
+                    chords_model.append([])
                 }
+            }
+            ScrollBar.vertical: ScrollBar {
+                active: true
             }
         }
     }
