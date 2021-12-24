@@ -63,8 +63,3 @@ You can play a song, starting with a certain chord, by clicking the play button 
 You can add lyrics, or performance notes, to any chord.
 You can set beats to 0 to overlap, or to a negative number to "travel back in time".
 You can edit the tempo and initial key using the sliders on the top.
-One omits values in Justly notation if the values are equal to their defaults.
-
-- The default "words" is ""
-- The default "octave" is 0
-- The default "beats" is 1
