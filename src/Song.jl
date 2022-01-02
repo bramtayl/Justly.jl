@@ -73,7 +73,10 @@ function read_justly!(io, song)
             else
                 words_match = match(WORDS_REGEX, line)
                 if words_match === nothing
-                    push!(chords, parse(Chord, line; line_number = line_number, words = words))
+                    push!(
+                        chords,
+                        parse(Chord, line; line_number = line_number, words = words),
+                    )
                     words = ""
                 else
                     words = words_match["words"]
@@ -122,12 +125,9 @@ julia> AudioSchedule(song)
 """
 function read_justly(file; keyword_arguments...)
     song = Song(; keyword_arguments...)
-    open(
-        let song = song
-            io -> read_justly!(io, song)
-        end,
-        file
-    )
+    open(let song = song
+        io -> read_justly!(io, song)
+    end, file)
     song
 end
 
@@ -139,7 +139,7 @@ function update_beats_per_minute!(song::Song, beats_per_minute)
 end
 
 function update_initial_midi_code!(song::Song, midi_code)
-    song.initial_key = 2.0^((midi_code - 69) / 12) * 440Hz
+    song.initial_key = get_frequency(midi_code)
     nothing
 end
 
@@ -148,5 +148,5 @@ function get_beats_per_minute(song::Song)
 end
 
 function get_initial_midi_code(song::Song)
-    69 + 12 * log(song.initial_key / 440Hz) / log(2)
+    get_nearest_midi_code(song.initial_key)
 end

@@ -13,16 +13,36 @@ cd(joinpath(pkgdir(Justly), "test")) do
     @test duration(AudioSchedule(song)) == 0.8s
 
     @testset "parsing" begin
-        @test_throws ParseError("Can't parse ? as beats on line 3") read_justly("bad_beats.justly")
-        @test_throws ParseError("Can't parse ? as chord on line 3") read_justly("bad_chord.justly")
-        @test_throws ParseError("Can't parse ? as denominator on line 3") read_justly("bad_denominator.justly")
-        @test_throws ParseError("Can't parse o as interval on line 3") read_justly("bad_interval.justly")
-        @test_throws ParseError("Can't parse ? as note on line 3") read_justly("bad_note.justly")
-        @test_throws ParseError("Can't parse ? as numerator on line 3") read_justly("bad_numerator.justly")
-        @test_throws ParseError("Can't parse ? as octave on line 3") read_justly("bad_octave.justly")
-        @test_throws ParseError("Can't parse ? as tempo on line 1") read_justly("bad_tempo.justly")
-        @test_throws ParseError("Can't parse ? as initial key on line 1") read_justly("bad_initial_key.justly")
-        @test_throws ParseError("Can't parse ? as initial key and tempo on line 1") read_justly("bad_initial_key_and_tempo.justly")
+        @test_throws ParseError("Can't parse ? as beats on line 3") read_justly(
+            "bad_beats.justly",
+        )
+        @test_throws ParseError("Can't parse ? as chord on line 3") read_justly(
+            "bad_chord.justly",
+        )
+        @test_throws ParseError("Can't parse ? as denominator on line 3") read_justly(
+            "bad_denominator.justly",
+        )
+        @test_throws ParseError("Can't parse o as interval on line 3") read_justly(
+            "bad_interval.justly",
+        )
+        @test_throws ParseError("Can't parse ? as note on line 3") read_justly(
+            "bad_note.justly",
+        )
+        @test_throws ParseError("Can't parse ? as numerator on line 3") read_justly(
+            "bad_numerator.justly",
+        )
+        @test_throws ParseError("Can't parse ? as octave on line 3") read_justly(
+            "bad_octave.justly",
+        )
+        @test_throws ParseError("Can't parse ? as tempo on line 1") read_justly(
+            "bad_tempo.justly",
+        )
+        @test_throws ParseError("Can't parse ? as initial key on line 1") read_justly(
+            "bad_initial_key.justly",
+        )
+        @test_throws ParseError("Can't parse ? as initial key and tempo on line 1") read_justly(
+            "bad_initial_key_and_tempo.justly",
+        )
     end
 end
 

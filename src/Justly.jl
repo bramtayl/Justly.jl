@@ -17,6 +17,8 @@ using AudioSchedules:
 import Base: getproperty, parse, print, Rational, setproperty!, show
 using Base.Meta: ParseError
 using Base.Threads: nthreads, @spawn
+using LightXML:
+    add_text, create_root, find_element, new_child, root, set_attribute, XMLDocument
 using PortAudio: PortAudioStream
 using QML:
     exec,
@@ -51,13 +53,12 @@ function property_model(a_vector, property_names)
                 item -> getproperty(item, property_name)
             end,
             let property_name = property_name, stdout = stdout
-                (items, value, index) -> 
-                    try 
-                        setproperty!(items[index], property_name, value)
-                    catch an_error
-                        # errors will be ignored, so print them at least
-                        showerror(stdout, an_error)
-                    end
+                (items, value, index) -> try
+                    setproperty!(items[index], property_name, value)
+                catch an_error
+                    # errors will be ignored, so print them at least
+                    showerror(stdout, an_error)
+                end
             end,
         )
     end
@@ -95,6 +96,7 @@ include("Note.jl")
 include("Chord.jl")
 include("Song.jl")
 include("AudioSchedule.jl")
+include("MusicXML.jl")
 
 function precompile_song(task_ios, song, buffer)
     for (series, _) in AudioSchedule(song)
@@ -167,11 +169,8 @@ function press!(task_ios, song, presses, releases, buffer)
     end
 end
 
-const NOTE_NAMES =
-    ("C", "C♯/D♭", "D", "D♯/E♭", "E", "F", "F♯/G♭", "G", "G♯/A♭", "A", "A♯/B♭", "B")
-
 function get_midi_name(midi_code)
-    octave, degree = fldmod(round(Int, midi_code) - 12, 12)
+    octave, degree = get_note_parts(midi_code)
     string("Initial key: ", NOTE_NAMES[degree + 1], "<sub>", octave, "</sub>")
 end
 
@@ -295,7 +294,6 @@ function edit_song(
         if test
             # note: this is 1, 1 in julia
             put!(presses, (0, 0))
-            put!(releases, nothing)
             put!(presses, (0, -1))
             put!(releases, nothing)
         end

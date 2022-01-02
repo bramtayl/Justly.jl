@@ -43,9 +43,9 @@ function parse(::Type{Chord}, text::AbstractString; line_number, words = "")
                     let line_number = line_number
                         (sub_string -> parse(Note, sub_string; line_number = line_number))
                     end,
-                    split(a_match["notes"], ", ")
+                    split(a_match["notes"], ", "),
                 )
-            end
+            end,
         )
     end
 end

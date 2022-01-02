@@ -56,7 +56,6 @@ ApplicationWindow {
             Layout.fillWidth: true
             clip: true
             model: chords_model
-            snapMode: ListView.SnapToItem
             delegate: Chord { }
             footer: SmallButton {
                 text: add_text
@@ -74,6 +73,7 @@ ApplicationWindow {
     }
     Timer {
         running: test
+        interval: 5000
         onTriggered: Qt.quit()
     }
 }
