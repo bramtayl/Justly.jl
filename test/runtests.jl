@@ -9,8 +9,8 @@ using Unitful: s
 cd(joinpath(pkgdir(Justly), "test")) do
     edit_song("song.justly"; test = true)
     song = read_justly("song.justly")
-    @test length(song.chords[1].notes) == 2
-    @test duration(AudioSchedule(song)) == 0.8s
+    @test length(song.chords[1].notes) == 4
+    @test duration(AudioSchedule(song)) == 1.55s
 
     @testset "parsing" begin
         @test_throws ParseError("Can't parse ? as beats on line 3") read_justly(
