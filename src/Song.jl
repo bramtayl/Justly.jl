@@ -111,7 +111,8 @@ julia> song = read_justly(joinpath(pkgdir(Justly), "test", "song.justly"));
 julia> print(song)
 220.0 Hz; 800.0 bpm
 # first chord
-1 for 19: 1 for 3, 5/4 for 5, 3/2 for 8, 5/4o1 for 19
+1 for 5: 1 for 1, 1 for 3, 5/4 for 5, 3/2 for 8
+1 for 14: 5/4o1 for 14
 1 for -1: 1 for 1
 ```
 

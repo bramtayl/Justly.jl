@@ -32,6 +32,19 @@
           <alter>0</alter>
           <octave>3</octave>
         </pitch>
+        <duration>1</duration>
+        <type>eighth</type>
+        <staff>2</staff>
+      </note>
+      <backup>
+        <duration>1</duration>
+      </backup>
+      <note>
+        <pitch>
+          <step>A</step>
+          <alter>0</alter>
+          <octave>3</octave>
+        </pitch>
         <duration>3</duration>
         <type>quarter</type>
         <dot/>
@@ -84,14 +97,18 @@
       <backup>
         <duration>8</duration>
       </backup>
+      <forward>
+        <duration>5</duration>
+      </forward>
       <note>
         <pitch>
           <step>C</step>
           <alter>1</alter>
           <octave>5</octave>
         </pitch>
-        <duration>8</duration>
-        <type>whole</type>
+        <duration>3</duration>
+        <type>quarter</type>
+        <dot/>
         <staff>1</staff>
         <tie type="start"/>
         <notations>
@@ -99,10 +116,10 @@
         </notations>
       </note>
       <backup>
-        <duration>8</duration>
+        <duration>3</duration>
       </backup>
       <forward>
-        <duration>8</duration>
+        <duration>3</duration>
       </forward>
     </measure>
     <measure number="2">
