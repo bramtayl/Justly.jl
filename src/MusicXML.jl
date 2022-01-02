@@ -349,7 +349,7 @@ julia> song = read_justly("song.justly");
 
 julia> xml_song = make_music_xml(song, beats_per_quarter_note = 2);
 
-julia> save_file(xml_song, "song.musicxml");
+julia> save_file(xml_song, "test_song.musicxml");
 
 julia> read("test_song.xml", String) == read("song.xml", String)
 true
