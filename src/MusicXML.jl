@@ -295,14 +295,12 @@ function add_chord!(
                 skip!(measures[measure_index], beginning)
             end
             for middle_index in 1:middle_measures
-                measure_index = measure_index + middle_index
-                skip!(maybe_new_measure!(part, measures, measure_index), beats_per_measure)
+                skip!(maybe_new_measure!(part, measures, measure_index + middle_index), beats_per_measure)
             end
             if ending > 0
                 measure_index = measure_index + middle_measures + 1
                 skip!(maybe_new_measure!(part, measures, measure_index), ending)
                 chord_from_beat = ending
-                measure_index = measure_index
             else
                 chord_from_beat = beats_per_measure
                 measure_index = measure_index + middle_measures
@@ -319,7 +317,7 @@ function add_chord!(
                 ),
             )
         end
-        skip!(chord_measure, chord_beats)
+        skip!(measures[measure_index], chord_beats)
         chord_from_beat = chord_from_beat + chord_beats
     end
     key, measure_index, chord_from_beat
@@ -335,7 +333,10 @@ end
     )
 
 Make a music xml file from a song. You can save it to a new file with
-LightXML.save_file.
+`LightXML.save_file`.
+
+Key fifths is the number of sharps and flats in the key signature. So if it's
+`+1`, the key is G major/E minor, and if it's `-1`, the key is F major/D minor.
 
 ```jldoctest
 julia> using Justly
@@ -346,9 +347,9 @@ julia> cd(joinpath(pkgdir(Justly), "test"))
 
 julia> song = read_justly("song.justly");
 
-julia> xml_song = make_music_xml(song);
+julia> xml_song = make_music_xml(song, beats_per_quarter_note = 2);
 
-julia> save_file(xml_song, "test_song.xml");
+julia> save_file(xml_song, "song.musicxml");
 
 julia> read("test_song.xml", String) == read("song.xml", String)
 true
@@ -404,6 +405,7 @@ function make_music_xml(
 
     chord_from_beat = 0
     key = round_nearest_midi(song.initial_key)
+    chord = song.chords[1]
     for chord in song.chords
         key, measure_index, chord_from_beat = add_chord!(
             part,
@@ -421,3 +423,7 @@ function make_music_xml(
     score
 end
 export make_music_xml
+
+# song = read_justly("/home/brandon/Desktop/new_song.justly")
+# xml_song = make_music_xml(song, beats_per_quarter_note = 4, key_fifths = -1)
+# save_file(xml_song, "/home/brandon/Desktop/test.musicxml")

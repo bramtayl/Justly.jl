@@ -8,7 +8,7 @@
   <part id="P1">
     <measure number="1">
       <attributes>
-        <divisions>1</divisions>
+        <divisions>2</divisions>
         <key>
           <fifths>0</fifths>
         </key>
@@ -32,63 +32,35 @@
           <alter>0</alter>
           <octave>3</octave>
         </pitch>
-        <duration>1</duration>
+        <duration>3</duration>
         <type>quarter</type>
+        <dot/>
         <staff>2</staff>
       </note>
       <backup>
-        <duration>1</duration>
+        <duration>3</duration>
       </backup>
       <note>
         <pitch>
-          <step>E</step>
-          <alter>0</alter>
-          <octave>5</octave>
+          <step>C</step>
+          <alter>1</alter>
+          <octave>4</octave>
         </pitch>
-        <duration>4</duration>
-        <type>whole</type>
+        <duration>1</duration>
+        <type>eighth</type>
         <staff>1</staff>
         <tie type="start"/>
         <notations>
           <tied type="start"/>
         </notations>
       </note>
-      <backup>
-        <duration>4</duration>
-      </backup>
-      <forward>
-        <duration>1</duration>
-      </forward>
-    </measure>
-    <measure number="2">
       <note>
         <pitch>
-          <step>E</step>
-          <alter>0</alter>
-          <octave>5</octave>
+          <step>C</step>
+          <alter>1</alter>
+          <octave>4</octave>
         </pitch>
         <duration>4</duration>
-        <type>whole</type>
-        <staff>1</staff>
-        <tie type="stop"/>
-        <notations>
-          <tied type="stop"/>
-          <tied type="start"/>
-        </notations>
-        <tie type="start"/>
-      </note>
-      <backup>
-        <duration>4</duration>
-      </backup>
-    </measure>
-    <measure number="3">
-      <note>
-        <pitch>
-          <step>E</step>
-          <alter>0</alter>
-          <octave>5</octave>
-        </pitch>
-        <duration>2</duration>
         <type>half</type>
         <staff>1</staff>
         <tie type="stop"/>
@@ -97,7 +69,103 @@
         </notations>
       </note>
       <backup>
-        <duration>2</duration>
+        <duration>5</duration>
+      </backup>
+      <note>
+        <pitch>
+          <step>E</step>
+          <alter>0</alter>
+          <octave>4</octave>
+        </pitch>
+        <duration>8</duration>
+        <type>whole</type>
+        <staff>1</staff>
+      </note>
+      <backup>
+        <duration>8</duration>
+      </backup>
+      <note>
+        <pitch>
+          <step>C</step>
+          <alter>1</alter>
+          <octave>5</octave>
+        </pitch>
+        <duration>8</duration>
+        <type>whole</type>
+        <staff>1</staff>
+        <tie type="start"/>
+        <notations>
+          <tied type="start"/>
+        </notations>
+      </note>
+      <backup>
+        <duration>8</duration>
+      </backup>
+      <forward>
+        <duration>8</duration>
+      </forward>
+    </measure>
+    <measure number="2">
+      <note>
+        <pitch>
+          <step>C</step>
+          <alter>1</alter>
+          <octave>5</octave>
+        </pitch>
+        <duration>8</duration>
+        <type>whole</type>
+        <staff>1</staff>
+        <tie type="stop"/>
+        <notations>
+          <tied type="stop"/>
+          <tied type="start"/>
+        </notations>
+        <tie type="start"/>
+      </note>
+      <backup>
+        <duration>8</duration>
+      </backup>
+      <forward>
+        <duration>8</duration>
+      </forward>
+    </measure>
+    <measure number="3">
+      <note>
+        <pitch>
+          <step>C</step>
+          <alter>1</alter>
+          <octave>5</octave>
+        </pitch>
+        <duration>3</duration>
+        <type>quarter</type>
+        <dot/>
+        <staff>1</staff>
+        <tie type="stop"/>
+        <notations>
+          <tied type="stop"/>
+        </notations>
+      </note>
+      <backup>
+        <duration>3</duration>
+      </backup>
+      <forward>
+        <duration>3</duration>
+      </forward>
+      <note>
+        <pitch>
+          <step>A</step>
+          <alter>0</alter>
+          <octave>3</octave>
+        </pitch>
+        <duration>1</duration>
+        <type>eighth</type>
+        <staff>2</staff>
+      </note>
+      <backup>
+        <duration>1</duration>
+      </backup>
+      <backup>
+        <duration>1</duration>
       </backup>
     </measure>
   </part>
