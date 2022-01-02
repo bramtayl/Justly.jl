@@ -111,7 +111,8 @@ julia> song = read_justly(joinpath(pkgdir(Justly), "test", "song.justly"));
 julia> print(song)
 220.0 Hz; 800.0 bpm
 # first chord
-1 for 1: 1 for 1, 3/2o1 for 10
+1 for 19: 1 for 3, 5/4 for 5, 3/2 for 8, 5/4o1 for 19
+1 for -1: 1 for 1
 ```
 
 You can create an `AudioSchedule` from a song.
@@ -120,7 +121,7 @@ You can create an `AudioSchedule` from a song.
 julia> using AudioSchedules: AudioSchedule
 
 julia> AudioSchedule(song)
-0.8 s 44100.0 Hz AudioSchedule
+1.55 s 44100.0 Hz AudioSchedule
 ```
 """
 function read_justly(file; keyword_arguments...)

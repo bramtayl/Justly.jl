@@ -351,10 +351,10 @@ julia> xml_song = make_music_xml(song, beats_per_quarter_note = 2);
 
 julia> save_file(xml_song, "test_song.musicxml");
 
-julia> read("test_song.xml", String) == read("song.xml", String)
+julia> read("test_song.musicxml", String) == read("song.musicxml", String)
 true
 
-julia> rm("test_song.xml")
+julia> rm("test_song.musicxml")
 ```
 """
 function make_music_xml(
