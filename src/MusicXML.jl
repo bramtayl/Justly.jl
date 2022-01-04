@@ -423,7 +423,3 @@ function make_music_xml(
     score
 end
 export make_music_xml
-
-# song = read_justly("/home/brandon/Desktop/new_song.justly")
-# xml_song = make_music_xml(song, beats_per_quarter_note = 4, key_fifths = -1)
-# save_file(xml_song, "/home/brandon/Desktop/test.musicxml")
