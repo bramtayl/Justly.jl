@@ -150,5 +150,5 @@ function get_beats_per_minute(song::Song)
 end
 
 function get_initial_midi_code(song::Song)
-    get_nearest_midi_code(song.initial_key)
+    float(get_nearest_midi_code(song.initial_key))
 end

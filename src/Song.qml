@@ -53,9 +53,9 @@ ApplicationWindow {
                         onMoved: {
                             Julia.update_initial_midi_code(value)
                         }
+                        value: Julia.get_initial_midi_code()
                         stepSize: 1
                         from: 36
-                        value: Julia.get_initial_midi_code()
                         to: 72
                     }
                 }

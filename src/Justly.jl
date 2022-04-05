@@ -2,11 +2,10 @@ module Justly
 
 import AudioSchedules: AudioSchedule
 using AudioSchedules:
-    add!,
     Cycles,
     fill_all_task_ios,
-    Hook,
     Line,
+    make_series,
     Map,
     SawTooth,
     Scale,
@@ -98,19 +97,12 @@ include("Song.jl")
 include("AudioSchedule.jl")
 include("MusicXML.jl")
 
-function precompile_song(task_ios, song, buffer)
-    for (series, _) in AudioSchedule(song)
-        write_series!(task_ios, series, 1, buffer, 0)
-    end
-end
-
 function get_dummy_envelope(song, frequency)
     ramp = song.ramp
     sample_rate = song.sample_rate
     map(
-        (((wave, _, duration),) -> (wave, round(Int, duration * sample_rate))),
+        (((wave, _, duration),) -> make_series(wave, sample_rate)[1:round(Int, duration * sample_rate)]),
         triples(
-            sample_rate,
             Map(Scale(song.volume), Map(song.wave, Cycles(frequency))),
             0s,
             0,
@@ -137,17 +129,17 @@ function press!(task_ios, song, presses, releases, buffer)
     for (chord_index, voice_index) in presses
         buffer_at = 0
         if voice_index < 0
-            precompile_song(task_ios, song, buffer)
             Base.GC.enable(false)
-            for (series, series_total) in AudioSchedule(
+            # todo: reduce allocations
+            for series in collect(AudioSchedule(
                 song;
                 chords = (@view song.chords[(chord_index + 1):end]),
                 initial_key = update_key(song, chord_index - 1),
-            )
+            ))
                 if isready(releases)
                     break
                 end
-                buffer_at = write_series!(task_ios, series, series_total, buffer, buffer_at)
+                buffer_at = write_series!(task_ios, series, buffer, buffer_at)
             end
             write_buffer(buffer, buffer_at)
             Base.GC.enable(true)
@@ -160,9 +152,9 @@ function press!(task_ios, song, presses, releases, buffer)
                 update_key(song, chord_index) *
                 Rational(song.chords[chord_index + 1].notes[voice_index + 1].interval),
             )
-            buffer_at = write_series!(task_ios, ramp_up..., buffer, buffer_at)
-            buffer_at = write_series!(task_ios, sustain..., buffer, buffer_at)
-            buffer_at = write_series!(task_ios, ramp_down..., buffer, buffer_at)
+            buffer_at = write_series!(task_ios, ramp_up, buffer, buffer_at)
+            buffer_at = write_series!(task_ios, sustain, buffer, buffer_at)
+            buffer_at = write_series!(task_ios, ramp_down, buffer, buffer_at)
             write_buffer(buffer, buffer_at)
             Base.GC.enable(true)
         end
@@ -262,13 +254,6 @@ function edit_song(
     stream = PortAudioStream(0, 1, writer = Weaver(); warn_xruns = false)
     buffer = stream.sink_messanger.buffer
     task_ios = fill_all_task_ios(buffer; number_of_tasks = number_of_tasks)
-    (ramp_up, sustain, ramp_down) = get_dummy_envelope(song, 440.0Hz)
-    # each is a pair of waves and number of samples
-    # set the first index of the buffer to match each wave
-    write_series!(task_ios, ramp_up[1], 1, buffer, 0)
-    write_series!(task_ios, sustain[1], 1, buffer, 0)
-    write_series!(task_ios, ramp_down[1], 1, buffer, 0)
-    precompile_song(task_ios, song, buffer)
     loadqml(
         joinpath(@__DIR__, "Song.qml");
         chords_model = property_model(

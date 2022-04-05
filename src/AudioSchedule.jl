@@ -1,5 +1,5 @@
 function add_note!(a_schedule, song, note, time, key)
-    add!(
+    push!(
         a_schedule,
         Map(Scale(song.volume), Map(song.wave, Cycles(key * Rational(note.interval)))),
         time,
