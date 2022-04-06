@@ -19,6 +19,9 @@ using Base.Meta: ParseError
 using Base.Threads: nthreads, @spawn
 using PortAudio: PortAudioStream
 using QML:
+    # to avoid QML bug
+    emit,
+    @emit,
     exec,
     ListModel,
     addrole,
@@ -133,16 +136,21 @@ function update_key(song, chord_index)
 end
 
 function press!(task_ios, song, presses, releases, buffer)
+    series_list = Any[]
     for (chord_index, voice_index) in presses
         buffer_at = 0
         if voice_index < 0
+            @emit juliaProcessing()
             Base.GC.enable(false)
-            # todo: reduce allocations
-            for series in collect(AudioSchedule(
+            # collect ahead of time to prevent gaps
+            for series in AudioSchedule(
                 song;
                 chords = (@view song.chords[(chord_index + 1):end]),
                 initial_key = update_key(song, chord_index - 1),
-            ))
+            )
+                push!(series_list, series)
+            end
+            for series in series_list
                 if isready(releases)
                     break
                 end
@@ -150,8 +158,11 @@ function press!(task_ios, song, presses, releases, buffer)
             end
             write_buffer(buffer, buffer_at)
             Base.GC.enable(true)
+            empty!(series_list)
+            @emit juliaComplete()
             take!(releases)
         else
+            @emit juliaProcessing()
             Base.GC.enable(false)
             # all three will be pairs of iterators and number of frames
             (ramp_up, sustain, ramp_down) = get_dummy_envelope(
@@ -164,6 +175,7 @@ function press!(task_ios, song, presses, releases, buffer)
             buffer_at = write_series!(task_ios, ramp_down, buffer, buffer_at)
             write_buffer(buffer, buffer_at)
             Base.GC.enable(true)
+            @emit juliaComplete()
         end
     end
 end

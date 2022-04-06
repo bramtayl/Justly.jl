@@ -16,6 +16,12 @@ ApplicationWindow {
     ColumnLayout {
         height: parent.height
         width: parent.width
+        Text {
+            id: processing_signal
+            text: " ▶️"
+            font.pointSize: 20
+            color: "transparent"
+        }
         ListView {
             id: chords_view
             Layout.fillHeight: true
@@ -70,6 +76,12 @@ ApplicationWindow {
     }
     onClosing: {
         Julia.to_yaml()
+    }
+    JuliaSignals {
+        signal juliaProcessing()
+        signal juliaComplete()
+        onJuliaProcessing: processing_signal.color = "green"
+        onJuliaComplete: processing_signal.color = "transparent"
     }
     Timer {
         running: test
