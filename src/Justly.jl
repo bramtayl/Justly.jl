@@ -3,6 +3,7 @@ module Justly
 import AudioSchedules: AudioSchedule
 using AudioSchedules:
     Cycles,
+    Grow,
     fill_all_task_ios,
     Line,
     make_series,
@@ -16,8 +17,6 @@ using AudioSchedules:
 import Base: getproperty, parse, print, Rational, setproperty!, show
 using Base.Meta: ParseError
 using Base.Threads: nthreads, @spawn
-using LightXML:
-    add_text, create_root, find_element, new_child, root, set_attribute, XMLDocument
 using PortAudio: PortAudioStream
 using QML:
     exec,
@@ -71,17 +70,26 @@ end
 You can use `pedal` to make an envelope with a sustain and ramps at the beginning and end. 
 `overlap` is the proportion of the ramps that overlap.
 """
-function pedal(duration; slope = 1 / 0.1s, peak = 1, overlap = 1 / 2)
-    ramp = peak / slope
-    ramp_overlap = ramp * overlap
-    # if it's too short, there won't be a plateau
-    middle = duration - ramp - ramp + ramp_overlap
-    if middle <= 0s
-        half_duration = (duration + ramp_overlap) / 2
-        short_peak = half_duration * slope
-        (0, Line => half_duration, short_peak, Line => half_duration, 0)
+function pedal(duration; attack_duration = 0.05s, decay = -3/s)
+    sustain_duration = duration - attack_duration
+    if duration < attack_duration
+        (
+            0,
+            Line => duration / 2,
+            1,
+            Line => duration / 2,
+            0
+        )
     else
-        (0, Line => ramp, peak, Line => middle, peak, Line => ramp, 0)
+        (
+            0,
+            Line => attack_duration,
+            1,
+            Grow => sustain_duration,
+            1.0 * exp(sustain_duration * decay),
+            Line => attack_duration,
+            0
+        )
     end
 end
 export pedal
@@ -95,7 +103,6 @@ include("Note.jl")
 include("Chord.jl")
 include("Song.jl")
 include("AudioSchedule.jl")
-include("MusicXML.jl")
 
 function get_dummy_envelope(song, frequency)
     ramp = song.ramp
@@ -160,6 +167,24 @@ function press!(task_ios, song, presses, releases, buffer)
         end
     end
 end
+
+const A440_MIDI_CODE = 69
+const C0_MIDI_CODE = 12
+
+function get_midi_code(frequency)
+    A440_MIDI_CODE + 12 * log(frequency / 440Hz) / log(2)
+end
+
+function get_note_parts(midi_code)
+    fldmod(round(Int, midi_code) - C0_MIDI_CODE, 12)
+end
+
+function get_frequency(midi_code)
+    2.0^((midi_code - A440_MIDI_CODE) / 12) * 440Hz
+end
+
+const NOTE_NAMES =
+    ("C", "C♯/D♭", "D", "D♯/E♭", "E", "F", "F♯/G♭", "G", "G♯/A♭", "A", "A♯/B♭", "B")
 
 function get_midi_name(midi_code)
     octave, degree = get_note_parts(midi_code)

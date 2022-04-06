@@ -1,5 +1,6 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
+import QtQuick.Layouts 1.15
 import org.julialang 1.0
 
 Row {
@@ -20,7 +21,9 @@ Row {
                 Julia.to_yaml()
             }
         }
-        Interval {}
+        Interval {
+            id: interval
+        }
         Row {
             SmallButton {
                 text: "▶️"
@@ -37,6 +40,24 @@ Row {
                 value: beats
                 onValueModified: {
                     beats = value
+                    Julia.to_yaml()
+                }
+            }
+        }
+        RowLayout {
+            width: interval.width
+            Text {
+                text: "🔊 "
+            }
+            Slider {
+                Layout.fillWidth: true
+                snapMode: Slider.SnapAlways
+                stepSize: 1
+                value: volume
+                from: 0
+                to: 100
+                onMoved: {
+                    volume = value
                     Julia.to_yaml()
                 }
             }

@@ -12,7 +12,7 @@ function Chord(words, modulation, notes)
         words,
         modulation,
         notes,
-        property_model(notes, (:numerator, :denominator, :octave, :beats)),
+        property_model(notes, (:numerator, :denominator, :octave, :beats, :volume)),
     )
 end
 

@@ -17,7 +17,7 @@ function Song(;
     initial_key = 220.0Hz,
     ramp = 0.1s,
     sample_rate = 44100.0Hz,
-    volume = 0.1,
+    volume = 0.2,
     # need to allocate a new vector
     chords = Chord[],
 )
@@ -111,9 +111,9 @@ julia> song = read_justly(joinpath(pkgdir(Justly), "test", "song.justly"));
 julia> print(song)
 220.0 Hz; 800.0 bpm
 # first chord
-1 for 5: 1 for 1, 1 for 3, 5/4 for 5, 3/2 for 8
-1 for 14: 5/4o1 for 14
-1 for -1: 1 for 1
+1 for 5 at 20.0%: 1 for 1 at 20.0%, 1 for 3 at 20.0%, 5/4 for 5 at 20.0%, 3/2 for 8 at 20.0%
+1 for 14 at 20.0%: 5/4o1 for 14 at 20.0%
+1 for -1 at 20.0%: 1 for 1 at 20.0%
 ```
 
 You can create an `AudioSchedule` from a song.
@@ -150,5 +150,5 @@ function get_beats_per_minute(song::Song)
 end
 
 function get_initial_midi_code(song::Song)
-    float(get_nearest_midi_code(song.initial_key))
+    get_midi_code(song.initial_key)
 end

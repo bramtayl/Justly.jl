@@ -43,6 +43,9 @@ cd(joinpath(pkgdir(Justly), "test")) do
         @test_throws ParseError("Can't parse ? as initial key and tempo on line 1") read_justly(
             "bad_initial_key_and_tempo.justly",
         )
+        @test_throws ParseError("Can't parse ? as volume on line 3") read_justly(
+            "bad_volume.justly",
+        )
     end
 end
 
