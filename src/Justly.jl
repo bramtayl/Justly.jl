@@ -277,7 +277,7 @@ function edit_song(
     end)
 
     stream = PortAudioStream(0, 1, writer = Weaver(); warn_xruns = false)
-    buffer = stream.sink_messanger.buffer
+    buffer = stream.sink_messenger.buffer
     task_ios = fill_all_task_ios(buffer; number_of_tasks = number_of_tasks)
     loadqml(
         joinpath(@__DIR__, "Song.qml");
