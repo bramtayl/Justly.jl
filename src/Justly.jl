@@ -3,80 +3,56 @@ module Justly
 import AudioSchedules: AudioSchedule
 using AudioSchedules:
     Cycles,
+    @envelope,
     Grow,
-    fill_all_task_ios,
     Line,
     make_series,
     Map,
     SawTooth,
     Scale,
-    triples,
-    Weaver,
     write_buffer,
     write_series!
-import Base: getproperty, parse, print, Rational, setproperty!, show
+import Base: parse, print, push!, Rational, show
+using Base: catch_backtrace
 using Base.Meta: ParseError
-using Base.Threads: nthreads, @spawn
-using PortAudio: PortAudioStream
+using Base.Threads: @spawn
+using Observables: Observable
+using PortAudio: Buffer, PortAudioStream
 using QML:
-    # to avoid QML bug
-    emit,
-    @emit,
     exec,
     ListModel,
     addrole,
+    JuliaPropertyMap,
     loadqml,
     # to avoid QML bug
     QML,
     qmlfunction,
     setconstructor
 using Qt5QuickControls2_jll: Qt5QuickControls2_jll
-using SampledSignals: samplerate
-using Test: @test
-using Unitful: Hz, ms, s, minute, uconvert
-
-using YAML: load_file, write_file
-import YAML: _print
-
+import SampledSignals: SampleBuf
+using Unitful: Hz, s
 # reexport to avoid a QML bug
 export QML
 
-const TIME = typeof(0.0s)
-const FREQUENCY = typeof(0.0Hz)
+const FLOAT_SECONDS = typeof(0.0s)
 
-function property_model(a_vector, property_names)
-    list_model = ListModel(a_vector, false)
-    for property_name in property_names
-        addrole(
-            list_model,
-            String(property_name),
-            let property_name = property_name
-                item -> getproperty(item, property_name)
-            end,
-            let property_name = property_name, stdout = stdout
-                (items, value, index) -> try
-                    setproperty!(items[index], property_name, value)
-                catch an_error
-                    # errors will be ignored, so print them at least
-                    showerror(stdout, an_error)
-                end
-            end,
-        )
-    end
-    setconstructor(list_model, eltype(a_vector))
-    list_model
+# make sure to show user the line number
+function throw_parse_error(text, description, line_number)
+    throw(ParseError(string("Can't parse $text as $description on line $line_number")))
 end
 
 """
-    pedal(duration; slope = 1 / 0.1s, peak = 1, overlap = 1/2)
+    pluck(duration; ramp_duration = 0.05s, decay_rate = -4/s)
 
-You can use `pedal` to make an envelope with a sustain and ramps at the beginning and end. 
-`overlap` is the proportion of the ramps that overlap.
+You can use `pluck` to make an envelope with an exponential decay_rate and ramps at the beginning and end.
+
+- `ramp_duration` is the duration of the ramps at the beginning and end.
+- `decay_rate` is the continuous negative decay rate.
 """
-function pedal(duration; attack_duration = 0.05s, decay = -3/s)
-    sustain_duration = duration - attack_duration
-    if duration < attack_duration
-        (
+function pluck(duration; ramp_duration = 0.07s, decay_rate = -4/s)
+    sustain_duration = duration - ramp_duration
+    if duration < ramp_duration
+        @envelope(
             0,
             Line => duration / 2,
             1,
@@ -84,194 +60,135 @@ function pedal(duration; attack_duration = 0.05s, decay = -3/s)
             0
         )
     else
-        (
+        @envelope(
             0,
-            Line => attack_duration,
+            Line => ramp_duration,
             1,
             Grow => sustain_duration,
-            1.0 * exp(sustain_duration * decay),
-            Line => attack_duration,
+            1.0 * exp(sustain_duration * decay_rate),
+            Line => ramp_duration,
             0
         )
     end
 end
-export pedal
+export pluck
 
-function throw_parse_error(text, description, line_number)
-    throw(ParseError(string("Can't parse $text as $description on line $line_number")))
-end
+precompile(pluck, (FLOAT_SECONDS,))
 
 include("Interval.jl")
 include("Note.jl")
 include("Chord.jl")
 include("Song.jl")
-include("AudioSchedule.jl")
 
-function get_dummy_envelope(song, frequency)
-    ramp = song.ramp
-    sample_rate = song.sample_rate
-    map(
-        (((wave, _, duration),) -> make_series(wave, sample_rate)[1:round(Int, duration * sample_rate)]),
-        triples(
-            Map(Scale(song.volume), Map(song.wave, Cycles(frequency))),
-            0s,
-            0,
-            Line => ramp,
-            1,
-            Line => 0.5s,
-            1,
-            Line => ramp,
-            0,
-        ),
-    )
-end
-
-# cumulative product of previous modulations
-function update_key(song, chord_index)
-    key = song.initial_key
-    for chord in view(song.chords, 1:(chord_index + 1))
-        key = key * Rational(chord.modulation.interval)
+function precompile_schedule(audio_schedule, song, buffer)
+    for series in audio_schedule
+        write_series!(buffer, view(series, 1:1), 0)
     end
-    key
 end
 
-function press!(task_ios, song, presses, releases, buffer)
-    series_list = Any[]
-    for (chord_index, voice_index) in presses
+precompile(precompile_schedule, (AudioSchedule, DEFAULT_SONG, Buffer{Float32}))
+
+function play_sounds!(song, presses, releases, buffer, audio_schedule)
+    wave = song.wave
+    make_envelope = song.make_envelope
+    
+    for (chord_index, note_index) in presses
         buffer_at = 0
-        if voice_index < 0
-            @emit juliaProcessing()
+        if note_index < 0
+            push!(audio_schedule, song; from_chord = chord_index)
+
+            precompile_schedule(audio_schedule, song, buffer)
             Base.GC.enable(false)
-            # collect ahead of time to prevent gaps
-            for series in AudioSchedule(
-                song;
-                chords = (@view song.chords[(chord_index + 1):end]),
-                initial_key = update_key(song, chord_index - 1),
-            )
-                push!(series_list, series)
-            end
-            for series in series_list
+            for series in audio_schedule
                 if isready(releases)
                     break
                 end
-                buffer_at = write_series!(task_ios, series, buffer, buffer_at)
+                buffer_at = write_series!(buffer, series, buffer_at)
             end
             write_buffer(buffer, buffer_at)
             Base.GC.enable(true)
-            empty!(series_list)
-            @emit juliaComplete()
+
+            empty!(audio_schedule)
             take!(releases)
         else
-            @emit juliaProcessing()
-            Base.GC.enable(false)
-            # all three will be pairs of iterators and number of frames
-            (ramp_up, sustain, ramp_down) = get_dummy_envelope(
-                song,
-                update_key(song, chord_index) *
-                Rational(song.chords[chord_index + 1].notes[voice_index + 1].interval),
+            # cumulative product of previous modulations
+            volume = song.volume_observable[]
+            frequency = (song.frequency_observable[])Hz
+            for chord in song.chords[1:chord_index] 
+                volume = volume * chord.volume
+                frequency = frequency * Rational(chord.interval)
+            end
+            note = song.chords[chord_index].notes[note_index]
+            push!(audio_schedule,
+                Map(
+                    Scale(volume * note.volume),
+                    Map(wave, Cycles(frequency * Rational(note.interval)))
+                ),
+                0.0s,
+                make_envelope(0.5s),
             )
-            buffer_at = write_series!(task_ios, ramp_up, buffer, buffer_at)
-            buffer_at = write_series!(task_ios, sustain, buffer, buffer_at)
-            buffer_at = write_series!(task_ios, ramp_down, buffer, buffer_at)
+            
+            precompile_schedule(audio_schedule, song, buffer)
+            Base.GC.enable(false)
+            for series in audio_schedule
+                buffer_at = write_series!(buffer, series, buffer_at)
+            end
             write_buffer(buffer, buffer_at)
             Base.GC.enable(true)
-            @emit juliaComplete()
+            
+            empty!(audio_schedule)
+            take!(releases)
         end
     end
 end
 
-const A440_MIDI_CODE = 69
-const C0_MIDI_CODE = 12
+precompile(play_sounds!, (
+    DEFAULT_SONG,
+    Channel{Tuple{Int, Int}},
+    Channel{Nothing},
+    Buffer{Float32},
+    AudioSchedule
+))
 
-function get_midi_code(frequency)
-    A440_MIDI_CODE + 12 * log(frequency / 440Hz) / log(2)
-end
-
-function get_note_parts(midi_code)
-    fldmod(round(Int, midi_code) - C0_MIDI_CODE, 12)
-end
-
-function get_frequency(midi_code)
-    2.0^((midi_code - A440_MIDI_CODE) / 12) * 440Hz
-end
-
-const NOTE_NAMES =
-    ("C", "C♯/D♭", "D", "D♯/E♭", "E", "F", "F♯/G♭", "G", "G♯/A♭", "A", "A♯/B♭", "B")
-
-function get_midi_name(midi_code)
-    octave, degree = get_note_parts(midi_code)
-    string("Initial key: ", NOTE_NAMES[degree + 1], "<sub>", octave, "</sub>")
-end
+# TODO: precompile
 
 """
     function edit_song(song_file; 
-        ramp = 0.1s, 
-        number_of_tasks = nthreads() - 2, 
         test = false, 
-        keyword_arguments...
+        keywords...
     )
 
 Use to edit songs interactively. 
 The interface might be slow at first while Julia is compiling.
 
 - `song_file` is a YAML string or a vector of [`Chord`](@refs)s. Will be created if it doesn't exist.
-- `number_of_tasks` is the number of tasks to use to process data. Defaults to 2 less than the number of threads; we need 1 master thread for QML and 1 master thread for AudioSchedules.
-- If `test` is true, will open the editor briefly to test it.
-- `keyword_arguments` will be passed to [`read_justly`](@ref).
+- `keywords` will be passed to [`read_justly`](@ref).
 
 For more information, see the `README`.
 
-```jldoctest
+```julia
 julia> using Justly
 
-julia> edit_song(joinpath(pkgdir(Justly), "test", "song.justly"); test = true)
+julia> edit_song(joinpath(pkgdir(Justly), "examples", "wondrous_love.justly"); test = true)
 ```
 """
 function edit_song(
     song_file;
-    number_of_tasks = nthreads() - 2,
     test = false,
     keyword_arguments...,
 )
-    if nthreads() < 3
-        error("Justly needs at least 3 threads to function")
-    end
-
     song = if isfile(song_file)
         read_justly(song_file; keyword_arguments...)
     else
-        Song(; keyword_arguments...)
+        @info "Creating file $song_file"
+        Song(Chord[]; keyword_arguments...)
     end
-
-    qmlfunction("get_midi_name", get_midi_name)
-
-    qmlfunction("get_initial_midi_code", let song = song
-        () -> get_initial_midi_code(song)
-    end)
-
-    qmlfunction(
-        "update_initial_midi_code",
-        let song = song
-            midi_code -> update_initial_midi_code!(song, midi_code)
-        end,
-    )
-
-    qmlfunction("get_beats_per_minute", let song = song
-        () -> get_beats_per_minute(song)
-    end)
-
-    qmlfunction(
-        "update_beats_per_minute",
-        let song = song
-            beats_per_minute -> update_beats_per_minute!(song, beats_per_minute)
-        end,
-    )
 
     presses = Channel{Tuple{Int, Int}}(0)
     qmlfunction(
         "press",
         let presses = presses
-            (chord_index, voice_index) -> put!(presses, (chord_index, voice_index))
+            (chord_index, note_index) -> put!(presses, (chord_index, note_index))
         end,
     )
 
@@ -280,64 +197,61 @@ function edit_song(
         () -> put!(releases, nothing)
     end)
 
-    print_function = let song = song
-        io -> print(io, song)
-    end
-
-    qmlfunction("to_yaml", let song_file = song_file, print_function = print_function
-        () -> open(print_function, song_file, write = true)
+    qmlfunction("update_file", let song_file = song_file, song = song
+        () -> open(
+            let song = song
+                io -> print(io, song)
+            end,
+            song_file,
+            write = true
+        )
     end)
 
-    stream = PortAudioStream(0, 1, writer = Weaver(); warn_xruns = false)
+    stream = PortAudioStream(0, 1;
+        latency = 0.2,
+        warn_xruns = false
+    )
     buffer = stream.sink_messenger.buffer
-    task_ios = fill_all_task_ios(buffer; number_of_tasks = number_of_tasks)
+
+    audio_schedule = AudioSchedule()
+
+    press_task = @spawn play_sounds!($song, $presses, $releases, $buffer, $audio_schedule)
+
     loadqml(
         joinpath(@__DIR__, "Song.qml");
-        chords_model = property_model(
-            song.chords,
-            (:numerator, :denominator, :octave, :beats, :words, :notes_model),
-        ),
         test = test,
+        chords_model = list_model(song.chords),
+        observables = JuliaPropertyMap(
+            "volume" => song.volume_observable,
+            "frequency" => song.frequency_observable,
+            "tempo" => song.tempo_observable,
+        )
     )
-    press_task = Task(
-        let task_ios = task_ios,
-            song = song,
-            presses = presses,
-            releases = releases,
-            buffer = buffer
 
-            () -> press!(task_ios, song, presses, releases, buffer)
-        end,
-    )
-    press_task.sticky = false
-    schedule(press_task)
     try
         exec()
+    catch an_error
+        @warn "QML frozen. You must restart julia!"
+        showerror(stdout, an_error, catch_backtrace())
+    finally
         if test
-            # note: this is 1, 1 in julia
-            put!(presses, (0, 0))
-            put!(presses, (0, -1))
+            # play the first note of the first chord
+            precompile_schedule(audio_schedule, song, buffer)
+            put!(presses, (1, 1))
+            put!(releases, nothing)
+            # play the first chord
+            put!(presses, (1, -1))
             put!(releases, nothing)
         end
-    catch an_error
-        # can't error while QML is running, so just message
-        println("Front-end errored:")
-        showerror(stdout, an_error)
-    finally
         close(presses)
-        try
-            wait(press_task)
-        catch an_error
-            # can't error while QML is running, so just message
-            println("Back-end errored:")
-            showerror(stdout, an_error)
-        finally
-            close(releases)
-            close(stream)
-        end
+        close(releases)
+        close(stream)
+        wait(press_task)
     end
     nothing
 end
 export edit_song
+
+precompile(edit_song, (String,))
 
 end

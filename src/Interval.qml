@@ -3,25 +3,27 @@ import QtQuick.Controls 2.15
 import org.julialang 1.0
 
 Row {
-    Text {
-        anchors.verticalCenter: parent.verticalCenter
-        text: "key × "
-    }
+    spacing: default_spacing
     Column {
-        SmallSpinBox {
+        SpinBox {
+            id: numerator_control
             from: 1
             value: numerator
+            editable: true
             onValueModified: {
                 numerator = value
             }
         }
         ToolSeparator {
             orientation: Qt.Horizontal
-            width: parent.width
+            // implicit to avoid a loop?
+            implicitWidth: parent.width
         }
-        SmallSpinBox {
+        SpinBox {
+            id: denominator_control
             from: 1
             value: denominator
+            editable: true
             onValueModified: {
                 denominator = value
             }
@@ -29,13 +31,16 @@ Row {
     }
     Text {
         anchors.verticalCenter: parent.verticalCenter
-        text: " × 2 "
+        text: "×2"
     }
-    SmallSpinBox {
-        from: -99
-        value: octave
-        onValueModified: {
-            octave = value
+    Row {
+        SpinBox {
+            from: -99
+            value: octave
+            editable: true
+            onValueModified: {
+                octave = value
+            }
         }
     }
 }
