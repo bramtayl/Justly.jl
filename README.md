@@ -49,11 +49,11 @@ end
 Frequency: 440 Hz
 Tempo: 200 bpm
 Volume: 0.2
-# I
+\# I
 1: 1, 5/4 at 2.0, 3/2
-# IV
+\# IV
 2/3: 3/2, 1o1 at 2.0, 5/4o1
-# I
+\# I
 3/2 for 2: 1 for 2, 5/4 for 2 at 2.0, 3/2 for 2
 
 This song starts with a key of frequency 440Hz, that is, a concert A, at a tempo of 200 beats per minute and a volume of 0.2, that is, a fifth of the maximum volume. Note that playing more than 5 notes at once could result in peaking.
@@ -75,7 +75,3 @@ You can play a song, starting with a certain chord, by clicking the play button 
 You can add lyrics, or performance notes, to any chord.
 You can set beats to 0 to overlap, or to a negative number to "travel back in time".
 You can edit the tempo, initial frequency, and initial volume, using the sliders on the top.
-
-!!! warning
-
-    It's a good idea to hit the "Precompile" button before you play any sounds.
