@@ -52,11 +52,11 @@ Consider this example:
 Frequency: 440 Hz
 Tempo: 200 bpm
 Volume: 0.2
-\# I
+# I
 1: 1, 5/4 at 2.0, 3/2
-\# IV
+# IV
 2/3: 3/2, 1o1 at 2.0, 5/4o1
-\# I
+# I
 3/2 for 2: 1 for 2, 5/4 for 2 at 2.0, 3/2 for 2
 ```
 
