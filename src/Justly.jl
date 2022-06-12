@@ -88,10 +88,18 @@ end
 
 precompile(precompile_schedule, (AudioSchedule, DEFAULT_SONG, Buffer{Float32}))
 
+function add_one_note!(audio_schedule, song, volume, frequency)
+    push!(audio_schedule,
+        Map(
+            Scale(volume),
+            Map(song.wave, Cycles(frequency))
+        ),
+        0.0s,
+        song.make_envelope(0.5s),
+    )
+end
+
 function play_sounds!(song, presses, releases, buffer, audio_schedule)
-    wave = song.wave
-    make_envelope = song.make_envelope
-    
     for (chord_index, note_index) in presses
         buffer_at = 0
         if note_index < 0
@@ -119,15 +127,12 @@ function play_sounds!(song, presses, releases, buffer, audio_schedule)
                 frequency = frequency * Rational(chord.interval)
             end
             note = song.chords[chord_index].notes[note_index]
-            push!(audio_schedule,
-                Map(
-                    Scale(volume * note.volume),
-                    Map(wave, Cycles(frequency * Rational(note.interval)))
-                ),
-                0.0s,
-                make_envelope(0.5s),
-            )
-            
+            add_one_note!(
+                audio_schedule,
+                song,
+                volume * note.volume,
+                frequency * Rational(note.interval)
+            )            
             precompile_schedule(audio_schedule, song, buffer)
             Base.GC.enable(false)
             for series in audio_schedule
@@ -169,7 +174,11 @@ For more information, see the `README`.
 ```julia
 julia> using Justly
 
-julia> edit_song(joinpath(pkgdir(Justly), "examples", "wondrous_love.justly"); test = true)
+julia> edit_song(joinpath(pkgdir(Justly), "examples", "simple.justly"); test = true)
+
+julia> edit_song(joinpath(pkgdir(Justly), "not_a_folder", "simple.justly"); test = true)
+ERROR: ArgumentError: Folder doesn't exist!
+[...]
 ```
 """
 function edit_song(
@@ -181,6 +190,10 @@ function edit_song(
         read_justly(song_file; keyword_arguments...)
     else
         @info "Creating file $song_file"
+        dir_name = dirname(song_file)
+        if !(isempty(dir_name)) && !(isdir(dir_name))
+            throw(ArgumentError("Folder doesn't exist!"))
+        end
         Song(Chord[]; keyword_arguments...)
     end
 
@@ -214,6 +227,21 @@ function edit_song(
     buffer = stream.sink_messenger.buffer
 
     audio_schedule = AudioSchedule()
+
+    # precompile song
+    push!(audio_schedule, song)
+    precompile_schedule(audio_schedule, song, buffer)
+    empty!(audio_schedule)
+
+    # precompile note
+    add_one_note!(
+        audio_schedule,
+        song,
+        song.volume_observable[],
+        (song.frequency_observable[])Hz
+    )
+    precompile_schedule(audio_schedule, song, buffer)
+    empty!(audio_schedule)
 
     press_task = @spawn play_sounds!($song, $presses, $releases, $buffer, $audio_schedule)
 
