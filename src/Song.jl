@@ -1,29 +1,37 @@
 
-mutable struct Song{Wave, MakeEnvelope}
+mutable struct Song
     chords::Vector{Chord}
     # use observables so changes in qml will propagate back
     volume_observable::Observable{Float64}
     frequency_observable::Observable{Float64}
     tempo_observable::Observable{Float64}
-    wave::Wave
-    make_envelope::MakeEnvelope
+    precompiling_observable::Observable{Bool}
+    instruments::Dict{String, INSTRUMENT_TYPE}
+    instrument_names::Vector{String}
 end
 
 function Song(chords;
     volume = 0.2,
     frequency = 200.0,
     tempo = 200.0,
-    wave = SawTooth(7),
-    make_envelope = pluck
+    precompiling = false,
+    instruments = DEFAULT_INSTRUMENTS,
+    instrument_names = collect(keys(instruments))
 )
-    Song(chords, Observable(volume), Observable(frequency), Observable(tempo), wave, make_envelope)
+    Song(
+        chords,
+        Observable(volume),
+        Observable(frequency),
+        Observable(tempo),
+        Observable(precompiling),
+        instruments,
+        instrument_names
+    )
 end
-
-const DEFAULT_SONG = Song{SawTooth{7}, typeof(pluck)}
 
 precompile(Song, (Vector{Chord},))
 
-function print(io::IO, (@nospecialize song::Song))
+function print(io::IO, song::Song)
     print(io, "Frequency: ")
     print(io, song.frequency_observable[])
     print(io, " Hz")
@@ -36,7 +44,7 @@ function print(io::IO, (@nospecialize song::Song))
     print(io, " bpm")
     println(io)
     for chord in song.chords
-        print(io, chord)
+        print(io, chord; instrument_names = song.instrument_names)
     end
 end
 
@@ -52,6 +60,8 @@ function parse(::Type{Song}, io::IO;
     volume = 0.2,
     frequency = 200.0,
     tempo = 200.0,
+    instruments = DEFAULT_INSTRUMENTS,
+    instrument_names = collect(keys(instruments)),
     keywords...
 )
     words = ""
@@ -89,7 +99,8 @@ function parse(::Type{Song}, io::IO;
                         else
                             push!(chords, parse(Chord, line;
                                 words = words,
-                                line_number = line_number
+                                line_number = line_number,
+                                instrument_names = instrument_names
                             ))
                             # so we don't reuse words for the next chord
                             words = ""
@@ -103,6 +114,8 @@ function parse(::Type{Song}, io::IO;
         volume = volume,
         tempo = tempo,
         frequency = frequency,
+        instruments = instruments,
+        instrument_names = instrument_names,
         keywords...
     )
 end
@@ -186,30 +199,28 @@ function push!(audio_schedule::AudioSchedule, song::Song, time = 0.0s; from_chor
     volume = song.volume_observable[]
     frequency = (song.frequency_observable[])Hz
     beat_duration = (60 / song.tempo_observable[])s
-    wave = song.wave
-    make_envelope = song.make_envelope
+    instruments = song.instruments
+    instrument_names = song.instrument_names
     for (index, chord) in enumerate(song.chords)
-        frequency = frequency * Rational(chord.interval)
-        volume = volume * chord.volume
+        frequency = frequency * Rational(chord.modulation.interval)
+        volume = volume * chord.modulation.volume
         if index >= from_chord
             for note in chord.notes
-                push!(
+                instruments[instrument_names[note.instrument_number]](
                     audio_schedule,
-                    Map(
-                        Scale(volume * note.volume),
-                        Map(wave, Cycles(frequency * Rational(note.interval)))
-                    ),
                     float_time,
-                    make_envelope(note.beats * beat_duration),
+                    note.beats * beat_duration,
+                    volume * note.volume,
+                    frequency * Rational(note.interval)
                 )
             end
-            float_time = float_time + chord.beats * beat_duration
+            float_time = float_time + chord.modulation.beats * beat_duration
         end
     end
     nothing
 end
 
-precompile(push!, (AudioSchedule, DEFAULT_SONG, FLOAT_SECONDS))
+precompile(push!, (AudioSchedule, Song, FLOAT_SECONDS))
 
 function SampleBuf(song::Song; sample_rate = 44100Hz)
     audio_schedule = AudioSchedule(; sample_rate = sample_rate)

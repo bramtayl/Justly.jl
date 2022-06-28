@@ -60,6 +60,15 @@ Row {
                     text: volume_slider.value.toFixed(1)
                 }
             }
+            ComboBox {
+                model: instrument_names_model
+                currentIndex: instrument_number
+                textRole: "text"
+                onActivated: {
+                    instrument_number = index
+                    Julia.update_file()
+                }
+            }
         }
         PlayButton {
             // center under note

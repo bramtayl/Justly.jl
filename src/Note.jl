@@ -2,21 +2,22 @@ mutable struct Note
     interval::Interval
     beats::Int
     volume::Float64
+    # using numbers not names is more convenient with QML
+    instrument_number::Int
 end
 
 function Note(;
     interval = Interval(),
     beats = 1,
-    volume = 1
+    volume = 1,
+    instrument_number = 1
 )
-    Note(interval, beats, volume)
+    Note(interval, beats, volume, instrument_number)
 end
 
-precompile(Note, ())
+const NOTE_REGEX = r"(?<interval>[^ ]*)(?: for (?<beats>[^ ]*))?(?: at (?<volume>[^ ]*))? with (?<instrumentname>[^ ]*)"
 
-const NOTE_REGEX = r"(?<interval>[^ ]*)(?: for (?<beats>[^ ]*))?(?: at (?<volume>[^ ]*))?"
-
-function parse(::Type{Note}, text::AbstractString; line_number = line_number)
+function parse(::Type{Note}, text::AbstractString; line_number, instrument_names)
     a_match = match(NOTE_REGEX, text)
     if a_match === nothing
         throw_parse_error(text, "note", line_number)
@@ -28,33 +29,40 @@ function parse(::Type{Note}, text::AbstractString; line_number = line_number)
             else
                 tryparse(Int, beats_string)
             end
+        if beats === nothing
+            throw_parse_error(beats_string, "beats", line_number)
+        end
+
         volume_string = a_match["volume"]
-        # default to 1.0
         volume = 
             if volume_string === nothing
                 1.0
             else
                 tryparse(Float64, volume_string)
             end
-        if beats === nothing
-            throw_parse_error(beats_string, "beats", line_number)
-        elseif volume === nothing
+        if volume === nothing
             throw_parse_error(volume_string, "volume", line_number)
-        else
-            Note(;
-                interval = parse(Interval, a_match["interval"];
-                    line_number = line_number
-                ),
-                beats = beats, 
-                volume = volume
-            )
         end
+
+        Note(;
+            interval = parse(Interval, a_match["interval"];
+                line_number = line_number
+            ),
+            beats = beats, 
+            volume = volume,
+            instrument_number = findfirst(
+                let instrument_name = a_match["instrumentname"]
+                    name -> name == instrument_name
+                end,
+                instrument_names
+            )
+        )
     end
 end
 
 precompile(parse, (Type{Note}, SubString))
 
-function print(io::IO, note::Note)
+function print(io::IO, note::Note; instrument_names)
     print(io, note.interval)
     beats = note.beats
     if !(beats == 1)
@@ -66,6 +74,8 @@ function print(io::IO, note::Note)
         print(io, " at ")
         print(io, volume)
     end
+    print(io, " with ")
+    print(io, instrument_names[note.instrument_number])
 end
 
 precompile(print, (IOStream, Note))
@@ -93,6 +103,12 @@ function list_model(notes::Vector{Note})
         item -> float(item.beats),
         (list, new_value, index) -> 
             list[index].beats = round(Int, new_value)
+    )
+    # add and subtract 1 for zero-based indexing
+    addrole(list_model, "instrument_number",
+        item -> float(item.instrument_number) - 1,
+        (list, new_value, index) -> 
+            list[index].instrument_number = round(Int, new_value) + 1
     )
     addrole(list_model, "volume",
         item -> item.volume,

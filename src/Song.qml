@@ -55,15 +55,15 @@ ApplicationWindow {
                             from: 60
                             to: 440
                             stepSize: 10
-                            value: observables.frequency
+                            value: julia_arguments.frequency
                             onMoved: {
-                                observables.frequency = value
+                                julia_arguments.frequency = value
                                 frequency_text.text = value + " Hz"
                             }
                         }
                         Text {
                             id: frequency_text
-                            text: observables.frequency + " Hz"
+                            text: julia_arguments.frequency + " Hz"
                         }
                         Text {
                             text: "Tempo:"
@@ -73,15 +73,15 @@ ApplicationWindow {
                             from: 100
                             to: 800
                             stepSize: 10
-                            value: observables.tempo
+                            value: julia_arguments.tempo
                             onMoved: {
-                                observables.tempo = value
+                                julia_arguments.tempo = value
                                 tempo_text.text = value + " bpm"
                             }
                         }
                         Text {
                             id: tempo_text
-                            text: observables.tempo + " bpm"
+                            text: julia_arguments.tempo + " bpm"
                         }
                         Text {
                             text: "Volume"
@@ -91,15 +91,15 @@ ApplicationWindow {
                             from: 0.0
                             to: 0.2
                             stepSize: 0.01
-                            value: observables.volume
+                            value: julia_arguments.volume
                             onMoved: {
-                                observables.volume = value
+                                julia_arguments.volume = value
                                 volume_text.text = value
                             }
                         }
                         Text {
                             id: volume_text
-                            text: observables.volume
+                            text: julia_arguments.volume
                         }
                     }
                     // manually add spacing after the header
@@ -131,10 +131,6 @@ ApplicationWindow {
         // close after 5 seconds
         interval: 5000
         onTriggered: Qt.quit()
-    }
-    JuliaSignals {
-        signal kill()
-    onKill: Qt.quit()
     }
 }
 
