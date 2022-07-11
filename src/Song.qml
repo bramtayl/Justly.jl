@@ -123,9 +123,6 @@ ApplicationWindow {
             }
         }
     }
-    onClosing: {
-        Julia.update_file()
-    }
     Timer {
         running: test
         // close after 5 seconds

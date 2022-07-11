@@ -1,0 +1,94 @@
+tempo: 200.0
+volume: 0.2
+chords:
+  - notes:
+      - beats: 1
+        volume: 1.0
+        interval:
+          octave: 0
+          denominator: 1
+          numerator: 1
+        instrument_name: "pulse!"
+      - beats: 1
+        volume: 2.0
+        interval:
+          octave: 0
+          denominator: 4
+          numerator: 5
+        instrument_name: "sustain!"
+      - beats: 1
+        volume: 1.0
+        interval:
+          octave: 0
+          denominator: 2
+          numerator: 3
+        instrument_name: "pulse!"
+    modulation:
+      beats: 1
+      volume: 1.0
+      interval:
+        octave: 0
+        denominator: 1
+        numerator: 1
+    words: "I"
+  - notes:
+      - beats: 1
+        volume: 1.0
+        interval:
+          octave: 0
+          denominator: 2
+          numerator: 3
+        instrument_name: "pulse!"
+      - beats: 1
+        volume: 2.0
+        interval:
+          octave: 1
+          denominator: 1
+          numerator: 1
+        instrument_name: "sustain!"
+      - beats: 1
+        volume: 1.0
+        interval:
+          octave: 1
+          denominator: 4
+          numerator: 5
+        instrument_name: "pulse!"
+    modulation:
+      beats: 1
+      volume: 1.0
+      interval:
+        octave: 0
+        denominator: 3
+        numerator: 2
+    words: "IV"
+  - notes:
+      - beats: 1
+        volume: 1.0
+        interval:
+          octave: 0
+          denominator: 1
+          numerator: 1
+        instrument_name: "pulse!"
+      - beats: 1
+        volume: 2.0
+        interval:
+          octave: 0
+          denominator: 4
+          numerator: 5
+        instrument_name: "sustain!"
+      - beats: 1
+        volume: 1.0
+        interval:
+          octave: 0
+          denominator: 2
+          numerator: 3
+        instrument_name: "pulse!"
+    modulation:
+      beats: 1
+      volume: 1.0
+      interval:
+        octave: 0
+        denominator: 2
+        numerator: 3
+    words: "I"
+frequency: 220.0

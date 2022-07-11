@@ -9,7 +9,6 @@ Row {
     AddButton {
         onClicked: {
             notes_model.insert(index, [])
-            Julia.update_file()
         }
     }
     Column {
@@ -18,7 +17,6 @@ Row {
             anchors.horizontalCenter: parent.horizontalCenter
             onClicked: {
                 notes_model.remove(index)
-                Julia.update_file()
             }
         }
         Column {
@@ -30,7 +28,6 @@ Row {
                 editable: true
                 onValueModified: {
                     beats = value
-                    Julia.update_file()
                 }
             }
             Row {
@@ -43,7 +40,6 @@ Row {
                     to: 4
                     onMoved: {
                         volume = value
-                        Julia.update_file()
                         // just one decimal
                         // should be zeros after that, but sometimes there's
                         // floating-point noise
@@ -61,12 +57,10 @@ Row {
                 }
             }
             ComboBox {
-                model: instrument_names_model
+                model: instruments_model
                 currentIndex: instrument_number
-                textRole: "text"
                 onActivated: {
                     instrument_number = index
-                    Julia.update_file()
                 }
             }
         }
@@ -75,7 +69,7 @@ Row {
             anchors.horizontalCenter: parent.horizontalCenter
             onPressed: {
                 // add 1 for 1-based indexing
-                Julia.press(chord_index + 1, index + 1)
+                Julia.press_note(chord_index + 1, index + 1)
             }
             onReleased: {
                 // wait for julia to be ready

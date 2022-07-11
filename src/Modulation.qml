@@ -41,7 +41,6 @@ Column {
             editable: true
             onValueModified: {
                 beats = value
-                Julia.update_file()
             }
         }
         Text {
@@ -57,7 +56,6 @@ Column {
                 to: 4
                 onMoved: {
                     volume = value
-                    Julia.update_file()
                     // just one decimal
                     // should be zeros after that, but sometimes
                     // there's floating-point noise
@@ -75,7 +73,7 @@ Column {
             }
         }
         Text {
-            text: "Instrument number:"
+            text: "Instrument name:"
         }
         Item {
             width: 1
@@ -89,7 +87,7 @@ Column {
             // add 1 for 1-based indexing
             // -1 is a sentinel meaning just a chord, no note
             // TODO: can we use nothing here?
-            Julia.press(index + 1, -1)
+            Julia.press_chord(index + 1)
         }
         onReleased: {
             // stop playing when the user releases the button
