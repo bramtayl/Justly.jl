@@ -1,5 +1,10 @@
-SymbolButton {
-    up_color: "#fcef58"
-    down_color: "light yellow"
-    button_text: julia_arguments.precompiling ? "⌛" : "▶"
+Button {
+    onReleased: {
+        // stop playing when the user releases the button
+        Julia.release()
+    }
+        // release if canceled too
+    onCanceled: {
+        Julia.release()
+    }
 }

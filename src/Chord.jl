@@ -4,7 +4,7 @@ mutable struct Chord
     notes::Vector{Note}
     # separate list model for qml
     notes_model::ListModel
-    selected::Bool
+    note_cursor::Int
 end
 
 export Chord
@@ -14,12 +14,10 @@ function Chord(
     modulation = Modulation(),
     words = "",
     notes = Note[],
-    selected = false,
+    note_cursor = 0
 )
-    Chord(modulation, words, notes, make_list_model(notes, instruments), selected)
+    Chord(modulation, words, notes, make_list_model(notes, instruments), note_cursor)
 end
-
-precompile(Chord, (Vector{Instrument},))
 
 function as_dict(chord::Chord)
     Dict(
@@ -28,8 +26,6 @@ function as_dict(chord::Chord)
         "notes" => map(as_dict, chord.notes),
     )
 end
-
-precompile(as_dict, (Chord,))
 
 function from_dict(::Type{Chord}, dict, instruments)
     Chord(
@@ -41,8 +37,6 @@ function from_dict(::Type{Chord}, dict, instruments)
         end,
     )
 end
-
-precompile(from_dict, (Type{Chord}, Dict{String, Int}, Vector{Instrument}))
 
 function make_list_model(chords::Vector{Chord}, instruments)
     list_model = ListModel(chords, false)
@@ -77,6 +71,12 @@ function make_list_model(chords::Vector{Chord}, instruments)
     )
     addrole(
         list_model,
+        "note_cursor",
+        item -> float(item.note_cursor),
+        (list, new_value, index) -> list[index].note_cursor = round(Int, new_value),
+    )
+    addrole(
+        list_model,
         "volume",
         item -> item.modulation.volume,
         (list, new_value, index) -> list[index].modulation.volume = new_value,
@@ -88,16 +88,8 @@ function make_list_model(chords::Vector{Chord}, instruments)
         (list, new_value, index) -> list[index].words = new_value,
     )
     addrole(list_model, "notes_model", item -> item.notes_model)
-    addrole(
-        list_model,
-        "selected",
-        item -> item.selected,
-        (list, new_value, index) -> list[index].selected = new_value,
-    )
     setconstructor(list_model, let instruments = instruments
         () -> Chord(instruments)
     end)
     list_model
 end
-
-precompile(make_list_model, (Vector{Chord}, Vector{Instrument}))

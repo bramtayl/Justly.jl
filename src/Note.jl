@@ -5,11 +5,13 @@ mutable struct Note
     volume::Float64
 end
 
-function Note(instrument; interval = Interval(), beats = 1, volume = 1.0)
+function Note(instrument;
+    interval = Interval(),
+    beats = 1,
+    volume = 1.0
+)
     Note(instrument, interval, beats, volume)
 end
-
-precompile(Note, (Instrument,))
 
 function as_dict(note::Note)
     Dict(
@@ -20,8 +22,6 @@ function as_dict(note::Note)
     )
 end
 
-precompile(as_dict, (Note,))
-
 function from_dict(::Type{Note}, dict, instruments)
     Note(
         get_instrument(instruments, dict["instrument_name"]);
@@ -30,8 +30,6 @@ function from_dict(::Type{Note}, dict, instruments)
         volume = dict["volume"],
     )
 end
-
-precompile(from_dict, (Type{Note}, Dict{String, Int}, Vector{Instrument}))
 
 function make_list_model(notes::Vector{Note}, instruments)
     list_model = ListModel(notes, false)
@@ -85,5 +83,3 @@ function make_list_model(notes::Vector{Note}, instruments)
     end)
     list_model
 end
-
-precompile(make_list_model, (Vector{Note}, Vector{Instrument}))

@@ -3,7 +3,7 @@ volume: 0.2
 chords:
   - notes:
       - beats: 1
-        volume: 1.0
+        volume: 0.9500000000000001
         interval:
           octave: 0
           denominator: 1
@@ -37,7 +37,7 @@ chords:
         interval:
           octave: 0
           denominator: 2
-          numerator: 3
+          numerator: 1
         instrument_name: "pulse!"
       - beats: 1
         volume: 2.0
@@ -62,21 +62,21 @@ chords:
         numerator: 2
     words: "IV"
   - notes:
-      - beats: 1
-        volume: 1.0
+      - beats: 2
+        volume: 0.98
         interval:
           octave: 0
           denominator: 1
           numerator: 1
         instrument_name: "pulse!"
-      - beats: 1
+      - beats: 2
         volume: 2.0
         interval:
           octave: 0
           denominator: 4
           numerator: 5
         instrument_name: "sustain!"
-      - beats: 1
+      - beats: 2
         volume: 1.0
         interval:
           octave: 0
@@ -84,7 +84,7 @@ chords:
           numerator: 3
         instrument_name: "pulse!"
     modulation:
-      beats: 1
+      beats: 2
       volume: 1.0
       interval:
         octave: 0
