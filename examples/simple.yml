@@ -37,7 +37,7 @@ chords:
         interval:
           octave: 0
           denominator: 2
-          numerator: 1
+          numerator: 3
         instrument_name: "pulse!"
       - beats: 1
         volume: 2.0

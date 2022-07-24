@@ -65,9 +65,9 @@ You can add a song to an `AudioSchedule` at a start time.
 You can use this to overlap multiple songs at differnt times.
 
 ```jldoctest read_justly
-julia> using AudioSchedules: AudioSchedule, s
+julia> using AudioSchedules: AudioSchedule, Hz, s
 
-julia> audio_schedule = AudioSchedule()
+julia> audio_schedule = AudioSchedule(sample_rate = 44100Hz)
 0.0 s 44100.0 Hz AudioSchedule
 
 julia> push!(audio_schedule, song, 0.0s)
@@ -75,7 +75,7 @@ julia> push!(audio_schedule, song, 0.0s)
 julia> push!(audio_schedule, song, 1.0s)
 
 julia> audio_schedule
-1.9700000000000002 s 44100.0 Hz AudioSchedule
+2.27 s 44100.0 Hz AudioSchedule
 ```
 """
 function read_justly(file, instruments = DEFAULT_INSTRUMENTS)

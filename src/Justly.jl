@@ -2,6 +2,7 @@ module Justly
 
 import AudioSchedules: AudioSchedule
 using AudioSchedules:
+    compile,
     Cycles,
     @envelope,
     Grow,
@@ -41,6 +42,43 @@ include("Note.jl")
 include("Chord.jl")
 include("Song.jl")
 
+function produce!(presses, song, audio_schedule, test)
+    instruments = song.instruments
+    try
+        qmlfunction("press", let presses = presses
+            (action_type, arguments...) -> put!(presses, (action_type, arguments))
+        end)
+        qmlfunction("release", let is_on = audio_schedule.is_on
+            () -> is_on[] = false
+        end)
+        loadqml(
+            joinpath(@__DIR__, "Song.qml");
+            test = test,
+            chords_model = make_list_model(song.chords, instruments),
+            instruments_model = make_list_model(instruments),
+            empty_notes_model = make_list_model(Note[], instruments),
+            julia_arguments = JuliaPropertyMap(
+                "volume" => song.volume_observable,
+                "frequency" => song.frequency_observable,
+                "tempo" => song.tempo_observable,
+                "precompiling" => song.precompiling_observable
+            ),
+        )
+        exec()
+        if test
+            # precompile before each play
+            # play the first note of the first chord
+            put!(presses, ("play notes", (1, 1, 1)))
+            # play the first chord
+            put!(presses, ("play chords", (1, 1)))
+            # play starting with the first chord
+            put!(presses, ("play chords", (1,)))
+        end
+    catch an_error
+        showerror(stdout, an_error, catch_backtrace())
+    end
+end
+
 """
     function edit_justly(song_file, instruments = DEFAULT_INSTRUMENTS; 
         test = false
@@ -75,49 +113,20 @@ function edit_justly(song_file, instruments = DEFAULT_INSTRUMENTS; test = false)
         @info "Creating file $song_file"
         Song(instruments)
     end
-
-    audio_schedule = AudioSchedule()
-
-    presses = Channel{Tuple{String, Tuple}}(0)
-    
     instruments = song.instruments
-    
-    @sync begin
-        produce_task = @spawn begin
-            try
-                qmlfunction("press", let presses = presses
-                    (action_type, arguments...) -> put!(presses, (action_type, arguments))
-                end)
-                qmlfunction("release", let is_on = audio_schedule.is_on
-                    () -> is_on[] = false
-                end)
-                loadqml(
-                    joinpath(@__DIR__, "main.qml");
-                    test = test,
-                    chords_model = make_list_model(song.chords, instruments),
-                    instruments_model = make_list_model(instruments),
-                    empty_notes_model = make_list_model(Note[], instruments),
-                    julia_arguments = JuliaPropertyMap(
-                        "volume" => song.volume_observable,
-                        "frequency" => song.frequency_observable,
-                        "tempo" => song.tempo_observable,
-                        "precompiling" => song.precompiling_observable
-                    ),
-                )
-                exec()
-                if $test
-                    # play the first note of the first chord
-                    put!($presses, ("play notes", (1, 1, 1)))
-                    # play the first chord
-                    put!($presses, ("play chords", (1,)))
-                end
-            catch an_error
-                @warn "QML frozen. You must restart julia!"
-                showerror($stdout, an_error, catch_backtrace())
-            end
-        end
-        bind(presses, produce_task)
-        PortAudioStream(0, 1; latency = 0.2, warn_xruns = false) do stream
+    precompiling_observable = song.precompiling_observable
+    presses = Channel{Tuple{String, Tuple}}(0)
+
+    stream = PortAudioStream(0, 1; latency = 0.2, warn_xruns = false)
+    try
+        audio_schedule = AudioSchedule(; sample_rate = (stream.sample_rate)Hz)
+        # precompile the whole song
+        push!(audio_schedule, song)
+        compile(stream, audio_schedule)
+        empty!(audio_schedule)
+        produce_task = @spawn produce!($presses, $song, $audio_schedule, $test)
+        try
+            bind(presses, produce_task)
             for (press_type, press_arguments) in presses
                 audio_schedule.is_on[] = true
                 if press_type == "play notes"
@@ -127,10 +136,19 @@ function edit_justly(song_file, instruments = DEFAULT_INSTRUMENTS; test = false)
                 else
                     throw(ArgumentError("Press type $press_type not recognized"))
                 end
+                precompiling_observable[] = true
+                compile(stream, audio_schedule)
+                precompiling_observable[] = false
+                GC.enable(false)
                 write(stream, audio_schedule)
+                GC.enable(true)
                 empty!(audio_schedule)
             end
+        finally
+            wait(produce_task)
         end
+    finally
+        close(stream)
     end
     write_justly(song_file, song)
 end

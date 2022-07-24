@@ -11,7 +11,7 @@ cd(joinpath(pkgdir(Justly))) do
     audio_schedule = AudioSchedule()
     push!(audio_schedule, song, 0.0s)
     push!(audio_schedule, song, 1.0s)
-    @test duration(audio_schedule) ≈ 1.97s
+    @test duration(audio_schedule) ≈ 2.27s
 end
 
 if v"1.7" <= VERSION < v"1.8"
