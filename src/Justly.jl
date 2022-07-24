@@ -42,17 +42,21 @@ include("Note.jl")
 include("Chord.jl")
 include("Song.jl")
 
+function add_press!(audio_schedule, song, press_type, @nospecialize press_arguments)
+    if press_type == "play notes"
+        add_notes!(audio_schedule, song, press_arguments...)
+    elseif press_type == "play chords"
+        add_chords!(audio_schedule, song, press_arguments...)
+    else
+        throw(ArgumentError("Press type \"$press_type\" not recognized"))
+    end
+end
+
 function consume!(presses, stream, song, audio_schedule)
     precompiling_observable = song.precompiling_observable
     for (press_type, press_arguments) in presses
         audio_schedule.is_on[] = true
-        if press_type == "play notes"
-            play_notes!(audio_schedule, song, press_arguments...)
-        elseif press_type == "play chords"
-            play_chords!(audio_schedule, song, press_arguments...)
-        else
-            throw(ArgumentError("Press type $press_type not recognized"))
-        end
+        add_press!(audio_schedule, song, press_type, press_arguments)
         precompiling_observable[] = true
         compile(stream, audio_schedule)
         precompiling_observable[] = false
@@ -79,11 +83,7 @@ For more information, see the `README`.
 ```julia
 julia> using Justly
 
-julia> edit_justly(joinpath(pkgdir(Justly), "examples", "simple.yml"); test = true)
-
-julia> edit_justly(joinpath(pkgdir(Justly), "not_a_folder", "simple.yml"))
-ERROR: ArgumentError: Folder doesn't exist!
-[...]
+julia> edit_justly(joinpath(pkgdir(Justly), "examples", "simple.yml"))
 ```
 """
 function edit_justly(song_file, instruments = DEFAULT_INSTRUMENTS; test = false)
@@ -109,9 +109,12 @@ function edit_justly(song_file, instruments = DEFAULT_INSTRUMENTS; test = false)
         empty!(audio_schedule)
         consume_task = @spawn consume!($presses, $stream, $song, $audio_schedule)
         try
-            qmlfunction("press", let presses = presses
-                (action_type, arguments...) -> put!(presses, (action_type, arguments))
-            end)
+            qmlfunction(
+                "press",
+                let presses = presses
+                    (action_type, arguments...) -> put!(presses, (action_type, arguments))
+                end,
+            )
             qmlfunction("release", let is_on = audio_schedule.is_on
                 () -> is_on[] = false
             end)
@@ -125,18 +128,18 @@ function edit_justly(song_file, instruments = DEFAULT_INSTRUMENTS; test = false)
                     "volume" => song.volume_observable,
                     "frequency" => song.frequency_observable,
                     "tempo" => song.tempo_observable,
-                    "precompiling" => song.precompiling_observable
+                    "precompiling" => song.precompiling_observable,
                 ),
             )
             exec()
             if test
                 # precompile before each play
-                # play the first note of the first chord
-                put!(presses, ("play notes", (1, 1, 1)))
-                # play the first chord
-                put!(presses, ("play chords", (1, 1)))
-                # play starting with the first chord
-                put!(presses, ("play chords", (1,)))
+                # play the second note of the second chord
+                put!(presses, ("play notes", (2, 2, 2)))
+                # play the second chord
+                put!(presses, ("play chords", (2, 2)))
+                # play starting with the second chord
+                put!(presses, ("play chords", (2,)))
             end
         catch an_error
             showerror(stdout, an_error, catch_backtrace())

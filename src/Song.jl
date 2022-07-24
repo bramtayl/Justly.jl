@@ -15,7 +15,7 @@ function Song(
     volume = 0.2,
     frequency = 200.0,
     tempo = 200.0,
-    precompiling = false
+    precompiling = false,
 )
     Song(
         instruments,
@@ -102,7 +102,7 @@ function PlayState(song::Song, time)
         song.volume_observable[],
         (song.frequency_observable[])Hz,
         (60 / song.tempo_observable[])s,
-        time
+        time,
     )
 end
 
@@ -142,7 +142,13 @@ end
 
 precompile(push!, (AudioSchedule, Song, typeof(0.0s)))
 
-@noinline function play_notes!(audio_schedule, song, chord_index, first_note_index, last_note_index)
+@noinline function add_notes!(
+    audio_schedule,
+    song,
+    chord_index,
+    first_note_index,
+    last_note_index,
+)
     chords = song.chords
     play_state = PlayState(song, 0.0s)
     for chord in chords[1:(chord_index - 1)]
@@ -154,9 +160,14 @@ precompile(push!, (AudioSchedule, Song, typeof(0.0s)))
     nothing
 end
 
-precompile(play_notes!, (AudioSchedule, Song, Int, Int, Int))
+precompile(add_notes!, (AudioSchedule, Song, Int, Int, Int))
 
-@noinline function play_chords!(audio_schedule, song, first_chord_index, last_chord_index = length(song.chords))
+@noinline function add_chords!(
+    audio_schedule,
+    song,
+    first_chord_index,
+    last_chord_index = length(song.chords),
+)
     play_state = PlayState(song, 0.0s)
     chords = song.chords
     for chord in chords[1:(first_chord_index - 1)]
@@ -169,8 +180,4 @@ precompile(play_notes!, (AudioSchedule, Song, Int, Int, Int))
     nothing
 end
 
-precompile(play_chords!, (AudioSchedule, Song, Int, Int))
-
-
-
-
+precompile(add_chords!, (AudioSchedule, Song, Int, Int))

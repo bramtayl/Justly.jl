@@ -5,11 +5,7 @@ mutable struct Note
     volume::Float64
 end
 
-function Note(instrument;
-    interval = Interval(),
-    beats = 1,
-    volume = 1.0
-)
+function Note(instrument; interval = Interval(), beats = 1, volume = 1.0)
     Note(instrument, interval, beats, volume)
 end
 

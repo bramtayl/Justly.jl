@@ -14,7 +14,7 @@ function Chord(
     modulation = Modulation(),
     words = "",
     notes = Note[],
-    note_cursor = 0
+    note_cursor = 0,
 )
     Chord(modulation, words, notes, make_list_model(notes, instruments), note_cursor)
 end

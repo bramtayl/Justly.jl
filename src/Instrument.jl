@@ -23,7 +23,6 @@ end
 
 export default_wave
 
-
 const INSTRUMENT_ARGUMENT_TYPES =
     (AudioSchedule, typeof(0.0s), typeof(1.0s), Float64, typeof(440.0Hz))
 
