@@ -1,0 +1,6 @@
+.clang-tidy
+.vs*
+.vscode*
+.cache*
+build*
+install*

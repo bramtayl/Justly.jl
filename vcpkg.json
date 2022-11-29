@@ -1,0 +1,12 @@
+{
+  "name": "justly",
+  "version-string": "0.1.0",
+  "dependencies": [
+    "gamma",
+    {
+      "name": "qtbase",
+      "default-features": false,
+      "features": ["widgets", "testlib"]
+    }
+  ]
+}
