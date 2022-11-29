@@ -206,7 +206,7 @@ void Editor::reenable_actions() {
   // revise this later
   auto group_selected = false;
   // revise this later
-  auto insertable = song.root_pointer->get_child_count() == 0;
+  auto insertable = song.root.get_child_count() == 0;
 
   if (!insertable) {
     selected = view.selectionModel()->selectedRows();
@@ -286,7 +286,7 @@ auto Editor::insert(int position, int rows, const QModelIndex &parent_index)
 void Editor::paste(int position, const QModelIndex &parent_index) {
   if (!copied.empty()) {
     // TODO: only enable paste if it will be successful
-    if (song.node_from_index(parent_index).get_level() + 1 == copied[0]->get_level()) {
+    if (song.const_node_from_index(parent_index).get_level() + 1 == copied[0]->get_level()) {
       undo_stack.push(
           new Insert(song, position, copied, parent_index));
     }

@@ -20,13 +20,13 @@ class Song : public QAbstractItemModel {
   int tempo = DEFAULT_TEMPO;
   
   // pointer so the pointer, but not object, can be constant
-  const std::unique_ptr<TreeNode> root_pointer = std::make_unique<TreeNode>();
+  TreeNode root;
 
   explicit Song(QObject *parent = nullptr);
   void load(const QJsonObject &json_object);
 
-  [[nodiscard]] auto node_from_index(const QModelIndex &index) const
-      -> TreeNode &;
+  [[nodiscard]] auto node_from_index(const QModelIndex &index) -> TreeNode &;
+  [[nodiscard]] auto const_node_from_index(const QModelIndex &index) const -> const TreeNode &;
   [[nodiscard]] auto data(const QModelIndex &index, int role) const
       -> QVariant override;
   [[nodiscard]] auto flags(const QModelIndex &index) const

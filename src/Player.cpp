@@ -42,7 +42,7 @@ void Player::play(const Song &song, const QModelIndex &first_index, int rows) {
   current_time = (1.0F * TRANSITION_MILLISECONDS) / MILLISECONDS_PER_SECOND;
   total_time = current_time;
 
-  auto &item = song.node_from_index(first_index);
+  auto &item = song.const_node_from_index(first_index);
   auto item_position = item.is_at_row();
   auto end_position = item_position + rows;
   auto &parent = item.get_parent();

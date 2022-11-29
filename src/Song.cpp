@@ -11,7 +11,7 @@ void Song::load(const QJsonObject &json_object) {
   setVolumePercent(json_object["volume_percent"].toInt());
   setTempo(json_object["tempo"].toInt());
   if (json_object.contains("children")) {
-    root_pointer->insertRows(0, json_object["children"].toArray());
+    root.insertRows(0, json_object["children"].toArray());
   }
 }
 
@@ -21,11 +21,11 @@ auto Song::columnCount(const QModelIndex &parent) const -> int {
 
 auto Song::data(const QModelIndex &index, int role) const -> QVariant {
   // assume the index is valid because qt is requesting data for it
-  return node_from_index(index).data(index.column(), role);
+  return const_node_from_index(index).data(index.column(), role);
 }
 
 auto Song::flags(const QModelIndex &index) const -> Qt::ItemFlags {
-  return node_from_index(index).flags(index.column(),
+  return const_node_from_index(index).flags(index.column(),
                                       QAbstractItemModel::flags(index));
 }
 
@@ -34,10 +34,18 @@ auto Song::headerData(int section, Qt::Orientation orientation, int role) const
   return TreeNode::headerData(section, orientation, role);
 }
 
-auto Song::node_from_index(const QModelIndex &index) const -> TreeNode & {
+auto Song::node_from_index(const QModelIndex &index) -> TreeNode & {
   if (!index.isValid()) {
     // an invalid index points to the root
-    return *root_pointer;
+    return root;
+  }
+  return *(static_cast<TreeNode *>(index.internalPointer()));
+}
+
+auto Song::const_node_from_index(const QModelIndex &index) const -> const TreeNode & {
+  if (!index.isValid()) {
+    // an invalid index points to the root
+    return root;
   }
   return *(static_cast<TreeNode *>(index.internalPointer()));
 }
@@ -48,12 +56,12 @@ auto Song::index(int row, int column, const QModelIndex &parent_index) const
   // createIndex needs a pointer to the item, not the parent
   // will error if row doesn't exist
   return createIndex(row, column,
-                     &(node_from_index(parent_index).get_child(row)));
+                     &(const_node_from_index(parent_index).get_child(row)));
 }
 
 // get the parent index
 auto Song::parent(const QModelIndex &index) const -> QModelIndex {
-  auto &node = node_from_index(index);
+  auto &node = const_node_from_index(index);
   if (node.get_level() == 0) {
     TreeNode::error_is_root();
   }
@@ -67,7 +75,7 @@ auto Song::parent(const QModelIndex &index) const -> QModelIndex {
 }
 
 auto Song::rowCount(const QModelIndex &parent_index) const -> int {
-  auto &parent_node = node_from_index(parent_index);
+  auto &parent_node = const_node_from_index(parent_index);
   // column will be invalid for the root
   // we are only nesting into the first column of notes
   if (parent_node.get_level() == 0 || parent_index.column() == 0) {
@@ -132,7 +140,7 @@ auto Song::insert_children(int position,
 
 auto Song::copy(const QModelIndex &first_index, size_t rows,
                 std::vector<std::unique_ptr<TreeNode>> &copied) const -> void {
-  node_from_index(first_index)
+  const_node_from_index(first_index)
       .get_parent()
       .copy(first_index.row(), rows, copied);
 }
@@ -163,6 +171,6 @@ void Song::save(QJsonObject &json_object) const {
   json_object["tempo"] = tempo;
   json_object["volume_percent"] = volume_percent;
   QJsonArray json_children;
-  root_pointer->children_to_json(json_children);
+  root.children_to_json(json_children);
   json_object["children"] = std::move(json_children);
 }
