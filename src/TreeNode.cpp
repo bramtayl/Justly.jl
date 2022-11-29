@@ -17,12 +17,7 @@ auto TreeNode::new_child_note_chord_pointer() -> std::unique_ptr<NoteChord> {
   if (note_chord_pointer == nullptr) {
     return std::make_unique<Chord>();
   }
-  // TODO: do this with dispatch?
-  // make sure the parent is a chord
-  if (note_chord_pointer -> get_level() != 1) {
-    qCritical("Only chords can have chilrden!");
-  }
-  return std::make_unique<Note>();
+  return note_chord_pointer -> new_child_note_chord_pointer();
 }
 
 TreeNode::TreeNode(TreeNode *parent_pointer_input)

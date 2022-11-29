@@ -9,11 +9,11 @@ class TreeNode {
  public:
   // pointer so it can be null for root
   TreeNode *const parent_pointer = nullptr;
-  // pointers so they can be notes or chords
-  std::vector<std::unique_ptr<TreeNode>> child_pointers;
   // pointer so it can be a note or a chord
   const std::unique_ptr<NoteChord> note_chord_pointer;
-
+  // pointers so they can be notes or chords
+  std::vector<std::unique_ptr<TreeNode>> child_pointers;
+  
   explicit TreeNode(TreeNode *parent_pointer_input = nullptr);
   TreeNode(TreeNode& copied, TreeNode *parent_pointer_input);
   TreeNode(TreeNode& copied);

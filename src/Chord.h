@@ -19,4 +19,6 @@ class Chord : public NoteChord {
   auto setData(int column, const QVariant &value, int role) -> bool override;
   void test() override;
   auto pointer_copy_self() -> std::unique_ptr<NoteChord> override;
+  auto new_child_note_chord_pointer() -> std::unique_ptr<NoteChord> override;
+
 };

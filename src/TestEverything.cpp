@@ -10,8 +10,9 @@ void TestEverything::test_everything() {
   QCOMPARE(first_chord_node.get_child_count(), 3);
   auto &first_note_node = first_chord_node.get_child(0);
   first_note_node.note_chord_pointer -> test();
-  auto first_chord_index = song.index(1, 1);
-  auto first_note_index = song.index(1, 1, first_chord_index);
+  auto first_chord_index = song.index(0, 0);
+  auto first_note_index = song.index(0, 0, first_chord_index);
+  song.copy(first_chord_index, 3, editor.copied);
   
   
   editor.save("C:/Users/brand/Justly/examples/simple.json");

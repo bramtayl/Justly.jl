@@ -115,3 +115,10 @@ void Note::test() {
 auto Note::pointer_copy_self() -> std::unique_ptr<NoteChord> {
   return std::make_unique<Note>(*this);
 }
+
+auto Note::new_child_note_chord_pointer() -> std::unique_ptr<NoteChord> {
+  qCritical("Only chords can have chilrden!");
+  return nullptr;
+};
+
+

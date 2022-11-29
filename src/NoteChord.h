@@ -38,7 +38,7 @@ class NoteChord {
   virtual ~NoteChord() = default;
 
   virtual auto pointer_copy_self() -> std::unique_ptr<NoteChord> = 0;
-  // virtual auto new_child_note_chord_pointer() -> std::unique_ptr<NoteChord> = 0;
+  virtual auto new_child_note_chord_pointer() -> std::unique_ptr<NoteChord> = 0;
 
   static auto error_column(int column) -> void;
   [[nodiscard]] static auto headerData(int section, Qt::Orientation orientation,

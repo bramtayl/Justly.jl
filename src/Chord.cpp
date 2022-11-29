@@ -98,3 +98,7 @@ void Chord::test() {
 auto Chord::pointer_copy_self() -> std::unique_ptr<NoteChord> {
   return std::make_unique<Chord>(*this);
 }
+
+auto Chord::new_child_note_chord_pointer() -> std::unique_ptr<NoteChord> {
+  return std::make_unique<Note>();
+};
